@@ -630,6 +630,28 @@ img{ max-width: 100%; display:block; }
 .mv-field>label{display:block;font-size:12px;font-weight:700;color:var(--muted,#5A6072);margin-bottom:4px}
 .mv-sel{width:100%;padding:8px 10px;border:1px solid var(--hairline-strong,#D2CFC4);border-radius:8px;font-family:var(--font-body);font-size:13.5px;background:var(--paper-raised,#fff);color:var(--ink,#1B2233)}
 .mv-two{display:flex;gap:8px}.mv-two .mv-sel{flex:1;min-width:0}
+/* category tags on cards + duplicate list */
+.cat-tag{display:inline-flex;align-items:center;font-family:var(--font-body);font-weight:700;font-size:9.5px;letter-spacing:.05em;text-transform:uppercase;padding:2px 7px;border-radius:6px}
+.cat-tag--sop{background:var(--indigo-2-fill,#E8ECF7);color:var(--indigo-2,#02499D)}
+.cat-tag--alignment{background:#DFF0E7;color:#285A43}
+.cat-tag--policy{background:#F7E3CE;color:#8A5A12}
+/* new-document form */
+.nd-form{display:flex;flex-direction:column;gap:2px}
+.nd-label{font-size:11px;font-weight:700;color:var(--muted,#5A6072);margin:10px 0 2px}
+.nd-seg{display:inline-flex;flex-wrap:wrap;gap:6px}
+.nd-seg__b{border:1px solid var(--hairline-strong,#D2CFC4);background:var(--paper-raised,#fff);color:var(--ink,#1B2233);font-family:var(--font-body);font-weight:600;font-size:13px;padding:7px 14px;border-radius:8px;cursor:pointer}
+.nd-seg__b:hover{background:var(--lane-bg,#F0EEE7)}
+.nd-seg__b.is-on{background:var(--indigo-1,#242F52);color:#fff;border-color:var(--indigo-1,#242F52)}
+.nd-hint{font-size:12.5px;color:var(--muted,#5A6072);margin:0 0 10px}
+.dup-scroll{max-height:52vh;overflow-y:auto}
+.dup-pil{border:1px solid var(--hairline,#E7E1CF);border-radius:9px;margin-bottom:8px;overflow:hidden}
+.dup-pil__hd{list-style:none;cursor:pointer;padding:9px 12px;font-weight:700;font-size:13px;color:var(--indigo-1,#242F52);background:var(--lane-bg,#F5F4F0);display:flex;align-items:center;gap:8px}
+.dup-pil__hd::-webkit-details-marker{display:none}
+.dup-pil__n{margin-left:auto;font-size:11px;color:#7A8199;background:#fff;border-radius:999px;padding:1px 8px}
+.dup-row{display:flex;align-items:center;gap:8px;width:100%;text-align:left;border:0;border-top:1px solid var(--hairline,#E7E1CF);background:#fff;padding:9px 12px;cursor:pointer;font-family:var(--font-body)}
+.dup-row:hover{background:var(--indigo-2-fill,#E8ECF7)}
+.dup-row__t{flex:1;min-width:0;font-size:13px;font-weight:600;color:var(--ink,#1B2233);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dup-row__k{font-size:11px;color:#7A8199;flex:none}
 
 /* continuous zoom control — replaces the old Fit/100% toggle everywhere */
 .dg-zoomctl{display:inline-flex;align-items:center;gap:2px;border:1px solid var(--hairline-strong);
@@ -2251,7 +2273,12 @@ var FILTER_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" str
 var GUIDE_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5a2 2 0 0 1 2-2h9l5 5v11a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"/><path d="M14 3v5h5M8 13h8M8 17h6"/></svg>';
 var TRASH_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6M10 11v6M14 11v6"/></svg>';
 
-var KIND_LABEL = { process: 'Process', alignment: 'Alignment' };
+var KIND_LABEL = { process: 'Flowchart', alignment: 'Document' };
+/* Documents are grouped inside a pillar by category (SOP / Alignment / Policy),
+   independent of the FORM (Flowchart vs Document). Stored as p.category in the
+   content JSON (no DB change); older docs fall back by form. */
+var CATEGORIES = ['SOP', 'Alignment', 'Policy'];
+function categoryOf(p) { return (p && p.category) || (kindOf(p) === 'process' ? 'SOP' : 'Alignment'); }
 /* Effort unit is chosen once per process (week / day / hour). Stored in the
    content JSON as p.workingUnit (default 'day'), so no DB change. Conversion
    basis when an equivalent is shown: 1 week = 5 days, 1 day = 8 hours. */
@@ -3329,7 +3356,8 @@ var SEARCH_SVG = '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" str
 function itemCard(p) {
   var kind = kindOf(p), c = counts(p), edit = canEditItem(p);
   var meta = p.status === 'draft' ? '<span>Draft</span>' : p.status === 'archived' ? '<span>Archived</span>'
-    : (kind === 'alignment' ? '<span>Alignment doc</span>' : '<span>' + plural(c.steps, 'step') + '</span><span>' + plural(c.gates, 'review gate') + '</span>');
+    : (kind === 'alignment' ? '<span>' + KIND_LABEL.alignment + '</span>' : '<span>' + plural(c.steps, 'step') + '</span><span>' + plural(c.gates, 'review gate') + '</span>');
+  var catTag = '<span class="cat-tag cat-tag--' + categoryOf(p).toLowerCase() + '">' + esc(categoryOf(p)) + '</span>';
   var revBadge = p.review === 'pending' ? '<span class="rev-chip rev-chip--pending">In review</span>' : '';
   /* trash is a span (valid inside the card <button>); its click stops the card
      navigation. Keeping it inside the card means the card stays the single grid
@@ -3337,7 +3365,7 @@ function itemCard(p) {
   var trash = edit ? '<span class="toc-card__trash" role="button" tabindex="0" data-del="' + esc(p.process_id) + '" title="Delete (move to Trash)" aria-label="Delete ' + esc(p.title) + '">' + TRASH_SVG + '</span>' : '';
   return '<button class="toc-card toc-card--flat" data-proc="' + p.process_id + '" data-pillarkey="' + p.pillar + '">' + trash +
     '<div class="toc-card__top">' +
-      '<span class="mk-status-pill mk-status-pill--' + p.status + '">' + p.status + '</span>' + revBadge +
+      '<span class="mk-status-pill mk-status-pill--' + p.status + '">' + p.status + '</span>' + catTag + revBadge +
       (edit ? '' : '<span class="hb-access hb-access--view">' + LOCK + 'View only</span>') + ARROW +
     '</div>' +
     '<h3 class="toc-card__title toc-card__title--ink">' + esc(p.title) + '</h3>' +
@@ -3516,14 +3544,13 @@ function drawHome() {
 function homeByPillar() {
   return '<div class="toc-grid toc-grid--pillars">' + PILLARS.filter(function (pl) { return pl.key !== 'guide'; }).map(function (pl) {
     var mine = DOC.processes.filter(function (p) { return p.pillar === pl.key && visibleHome(p); });
-    var procs = mine.filter(function (p) { return kindOf(p) === 'process'; }).length;
-    var aligns = mine.filter(function (p) { return kindOf(p) === 'alignment'; }).length;
     var canEdit = canCreateIn(pl.key);
+    var counts = CATEGORIES.map(function (cat) { return { cat: cat, n: mine.filter(function (p) { return categoryOf(p) === cat; }).length }; }).filter(function (c) { return c.n; });
+    var metaHtml = counts.length ? counts.map(function (c) { return '<span>' + c.n + ' ' + esc(c.cat) + '</span>'; }).join('') : '<span>' + plural(mine.length, 'document') + '</span>';
     return '<button class="toc-card toc-card--live toc-card--pillar toc-card--home pillar-' + pl.key + '" data-pillar="' + pl.key + '">' +
       '<div class="toc-card__top">' + (canEdit ? '' : '<span class="hb-access hb-access--view">' + LOCK + 'View only</span>') + ARROW + '</div>' +
       '<h3 class="toc-card__title toc-card__title--ink">' + pl.label + '</h3>' +
-      '<div class="toc-card__meta"><span>' + procs + ' process' + (procs === 1 ? '' : 'es') + '</span>' +
-      '<span>' + aligns + ' alignment' + (aligns === 1 ? '' : 's') + '</span></div></button>';
+      '<div class="toc-card__meta">' + metaHtml + '</div></button>';
   }).join('') + '</div>';
 }
 function homeByRole() {
@@ -3600,12 +3627,12 @@ function drawPillar() {
   if (key === CAREER_KEY) {
     body = careerBody(match, edit);
   } else {
-    KINDS.forEach(function (kind) {
-      var list = match.filter(function (p) { return kindOf(p) === kind; })
+    CATEGORIES.forEach(function (cat) {
+      var list = match.filter(function (p) { return categoryOf(p) === cat; })
         .sort(function (a, b) { var o = { live: 0, draft: 1, archived: 2 }; return (o[a.status] || 9) - (o[b.status] || 9); });
       if (!list.length && (q || !edit)) return;
-      body += '<section class="pl-group"><h2 class="pl-group__title">' + KIND_PLURAL[kind] + '<span class="pl-group__count">' + list.length + '</span></h2>';
-      if (!list.length) body += '<p class="pl-empty">No ' + KIND_PLURAL[kind].toLowerCase() + ' here yet.' + (edit ? ' Use <b>+ New</b> above to add one.' : '') + '</p>';
+      body += '<section class="pl-group"><h2 class="pl-group__title">' + esc(cat) + '<span class="pl-group__count">' + list.length + '</span></h2>';
+      if (!list.length) body += '<p class="pl-empty">No ' + esc(cat) + ' documents here yet.' + (edit ? ' Use <b>+ New</b> above to add one.' : '') + '</p>';
       else body += '<div class="toc-grid">' + list.map(itemCard).join('') + '</div>';
       body += '</section>';
     });
@@ -3658,47 +3685,9 @@ function careerBody(list, edit) {
   return tabs + secs;
 }
 
-function chooseKind(title, cb) {
-  Modal.choice(title, 'A "process" is a step-by-step workflow (flowchart). An "alignment" is a written document — a team agreement or guideline.',
-    KINDS.map(function (k) { return { label: KIND_LABEL[k], value: k }; }), function (k) { if (k) cb(k); });
-}
-/* ------------------------- create-new: three ways -------------------------
-   "+ New" opens a chooser: from scratch, from a ready-made template, or by
-   duplicating any document the user can see. All three land in a fresh draft. */
-var TEMPLATES = [
-  { id: 'approval', kind: 'process', label: 'Approval loop',
-    desc: 'Prepare → review (yes/no) → approved, with a revise-and-resubmit branch.',
-    build: function () { return {
-      lanes: ['Requester', 'Reviewer'], owners: ['Requester', 'Reviewer'],
-      steps: [
-        { id: 'start', label: 'Start', lane: 'Requester', type: 'start', next: ['prepare'], task: '', timeline: '', files: [], images: [], note: '' },
-        { id: 'prepare', label: 'Prepare the request', lane: 'Requester', type: 'action', next: ['review'], task: '', timeline: '', files: [], images: [], note: '' },
-        { id: 'review', label: 'Review the request', lane: 'Reviewer', type: 'decision', next: { yes: ['done'], no: ['revise'] }, task: '', timeline: '', files: [], images: [], note: '' },
-        { id: 'revise', label: 'Revise and resubmit', lane: 'Requester', type: 'action', next: ['review'], task: '', timeline: '', files: [], images: [], note: '' },
-        { id: 'done', label: 'Approved', lane: 'Reviewer', type: 'action', next: ['end'], task: '', timeline: '', files: [], images: [], note: '' },
-        { id: 'end', label: 'End', lane: 'Reviewer', type: 'end', next: [], task: '', timeline: '', files: [], images: [], note: '' }
-      ] }; } },
-  { id: 'monthly', kind: 'process', label: 'Monthly cycle',
-    desc: 'Announce → collect → compile → confirm — a recurring monthly workflow.',
-    build: function () { return {
-      lanes: ['EDL', 'Stakeholders'], owners: ['EDL', 'Stakeholders'],
-      steps: [
-        { id: 'start', label: 'Start', lane: 'EDL', type: 'start', next: ['announce'], task: '', timeline: '', files: [], images: [], note: '' },
-        { id: 'announce', label: 'Announce the schedule', lane: 'EDL', type: 'action', next: ['collect'], task: '', timeline: '', files: [], images: [], note: '' },
-        { id: 'collect', label: 'Collect the data', lane: 'Stakeholders', type: 'action', next: ['compile'], task: '', timeline: '', files: [], images: [], note: '' },
-        { id: 'compile', label: 'Compile the report', lane: 'EDL', type: 'action', next: ['confirm'], task: '', timeline: '', files: [], images: [], note: '' },
-        { id: 'confirm', label: 'Confirm the results', lane: 'Stakeholders', type: 'action', next: ['end'], task: '', timeline: '', files: [], images: [], note: '' },
-        { id: 'end', label: 'End', lane: 'EDL', type: 'end', next: [], task: '', timeline: '', files: [], images: [], note: '' }
-      ] }; } },
-  { id: 'guideline', kind: 'alignment', label: 'Team alignment',
-    desc: 'A written guideline with Overview, Scope, Responsibilities and Notes.',
-    build: function () { return { body:
-      '<h2>Overview</h2><p>What this alignment is about.</p>' +
-      '<h2>Scope</h2><p>Who and what it covers.</p>' +
-      '<h2>Responsibilities</h2><ul><li>Role — responsibility</li></ul>' +
-      '<h2>Notes</h2><p>Anything else the team should know.</p>' }; } }
-];
-
+/* ------------------------- create-new -------------------------
+   "+ New" opens one form: pick a Category (SOP / Alignment / Policy) and a Form
+   (Flowchart / Document), name it, done — or duplicate an existing document. */
 function uniqueId(title) {
   var id = slug(title) || 'doc', taken = {}, i = 2, base = id;
   DOC.processes.forEach(function (p) { taken[p.process_id] = 1; });
@@ -3719,66 +3708,76 @@ function blankSeed(kind) {
    status, review state or audit fields. */
 function contentDup(p) {
   var out = {};
-  ['subtitle', 'lanes', 'owners', 'steps', 'body', 'variants'].forEach(function (k) { if (p[k] != null) out[k] = p[k]; });
+  ['subtitle', 'lanes', 'owners', 'steps', 'body', 'variants', 'workingUnit'].forEach(function (k) { if (p[k] != null) out[k] = p[k]; });
   return out;
 }
 /* Assemble a fresh draft from a seed (deep-copied so nothing is shared) and open it. */
-function makeNewItem(pillarKey, title, kind, seed) {
+function makeNewItem(pillarKey, title, kind, seed, category) {
   seed = seed ? JSON.parse(JSON.stringify(seed)) : {};
   var id = uniqueId(title);
   var item = { process_id: id, title: title.trim(), subtitle: '', status: 'draft', pillar: pillarKey, kind: kind,
+    category: category || (kind === 'process' ? 'SOP' : 'Alignment'),
     pic: currentUser.email, updatedAt: todayISO(), updatedBy: currentUser.email, reviewer: '', review: 'none', createdBy: currentUser.email };
+  if (kind === 'process' && item.workingUnit == null) item.workingUnit = 'day';
   if (pillarKey === CAREER_KEY) { item.country = careerCountry || CAREER_COUNTRIES[0]; item.bu = CAREER_BUS[0]; }
   for (var k in seed) item[k] = seed[k];
   DOC.processes.push(item);
   openEditor(id);
 }
 
+/* One form: Category + Form + Name (plus a shortcut to duplicate an existing doc). */
 function createNewItem(pillarKey) {
-  Modal.choice('Create a new document', 'Choose how to start:', [
-    { label: '<span class="mm-tile__ic">＋</span><span class="mm-tile__x"><b>From scratch</b><small>A blank process or alignment you build step by step.</small></span>', value: 'scratch' },
-    { label: '<span class="mm-tile__ic">▤</span><span class="mm-tile__x"><b>From a template</b><small>Start from a ready-made shape and fill it in.</small></span>', value: 'template' },
-    { label: '<span class="mm-tile__ic">⧉</span><span class="mm-tile__x"><b>Duplicate existing</b><small>Copy any document you can see — steps, PICs and content.</small></span>', value: 'duplicate' }
-  ], function (how) {
-    if (how === 'scratch') createFromScratch(pillarKey);
-    else if (how === 'template') createFromTemplate(pillarKey);
-    else if (how === 'duplicate') createFromDuplicate(pillarKey);
-  });
+  var cat = 'SOP', form = 'process';
+  var body = '<div class="nd-form">' +
+    '<label class="nd-label">Category</label>' +
+    '<div class="nd-seg" id="ndCat">' + CATEGORIES.map(function (c, i) {
+      return '<button type="button" class="nd-seg__b' + (i === 0 ? ' is-on' : '') + '" data-v="' + esc(c) + '">' + esc(c) + '</button>'; }).join('') + '</div>' +
+    '<label class="nd-label">Form</label>' +
+    '<div class="nd-seg" id="ndForm">' +
+      '<button type="button" class="nd-seg__b is-on" data-v="process">▤ Flowchart</button>' +
+      '<button type="button" class="nd-seg__b" data-v="alignment">▤ Document</button></div>' +
+    '<label class="nd-label" for="ndName">Name</label>' +
+    '<input id="ndName" class="mm-input" placeholder="e.g. Skill report workflow">' +
+    '</div>';
+  var h = Modal.custom('New in ' + esc(PILLAR_LABEL[pillarKey] || pillarKey), body, [
+    { label: 'Cancel', onClick: function () { Modal.close(); } },
+    { label: '⧉ Duplicate existing…', onClick: function () { Modal.close(); createFromDuplicate(pillarKey); } },
+    { label: 'Create', primary: true, onClick: create } ]);
+  function wireSeg(id, setter) { var g = h.querySelector('#' + id);
+    g.querySelectorAll('.nd-seg__b').forEach(function (b) { b.onclick = function () {
+      g.querySelectorAll('.nd-seg__b').forEach(function (x) { x.classList.remove('is-on'); }); b.classList.add('is-on'); setter(b.getAttribute('data-v')); }; }); }
+  wireSeg('ndCat', function (v) { cat = v; }); wireSeg('ndForm', function (v) { form = v; });
+  var nameEl = h.querySelector('#ndName'); setTimeout(function () { nameEl.focus(); }, 30);
+  nameEl.addEventListener('keydown', function (e) { if (e.key === 'Enter') create(); });
+  function create() { var t = (nameEl.value || '').trim(); if (!t) { nameEl.focus(); return; } Modal.close(); makeNewItem(pillarKey, t, form, blankSeed(form), cat); }
 }
-function createFromScratch(pillarKey) {
-  Modal.prompt('New item', 'Name of the new process or alignment:', '', function (t) {
-    if (!t || !t.trim()) return;
-    chooseKind('Is this a process or an alignment?', function (kind) {
-      makeNewItem(pillarKey, t, kind, blankSeed(kind));
-    });
-  });
-}
-function createFromTemplate(pillarKey) {
-  Modal.choice('Pick a template', 'Start from a ready-made shape — you can change everything afterwards.',
-    TEMPLATES.map(function (tp) { return { value: tp.id,
-      label: '<span class="mm-tile__x"><b>' + esc(tp.label) + '</b><span class="kind-tag kind-tag--' + tp.kind + '">' + KIND_LABEL[tp.kind] + '</span><small>' + esc(tp.desc) + '</small></span>' }; }),
-    function (id) {
-      var tp = TEMPLATES.filter(function (x) { return x.id === id; })[0]; if (!tp) return;
-      Modal.prompt('Name this ' + KIND_LABEL[tp.kind].toLowerCase(), 'Give it a name:', tp.label, function (t) {
-        if (!t || !t.trim()) return;
-        makeNewItem(pillarKey, t, tp.kind, tp.build());
-      });
-    });
-}
+
+/* Duplicate: documents grouped by pillar, each pillar a collapsible section. */
 function createFromDuplicate(pillarKey) {
-  var src = DOC.processes.filter(function (p) { return !p.deleted && canSee(p); })
-    .sort(function (a, b) { return (a.title || '').localeCompare(b.title || ''); });
+  var src = DOC.processes.filter(function (p) { return !p.deleted && canSee(p); });
   if (!src.length) { Modal.alert('Nothing to duplicate', 'There are no documents you can copy yet.'); return; }
-  Modal.choice('Duplicate a document', 'Pick a document — its steps, PICs and content are copied into a new draft in ' + esc(PILLAR_LABEL[pillarKey] || pillarKey) + '.',
-    src.map(function (p) { return { value: p.process_id,
-      label: '<span class="mm-tile__x"><b>' + esc(p.title) + '</b><span class="kind-tag kind-tag--' + kindOf(p) + '">' + KIND_LABEL[kindOf(p)] + '</span><small>' + esc(PILLAR_LABEL[p.pillar] || p.pillar) + (p.pic ? ' · PIC ' + esc(displayName(p.pic)) : '') + '</small></span>' }; }),
-    function (pid) {
-      var s = DOC.processes.filter(function (x) { return x.process_id === pid; })[0]; if (!s) return;
-      Modal.prompt('Name the copy', 'Name for the duplicated document:', s.title + ' (copy)', function (t) {
-        if (!t || !t.trim()) return;
-        makeNewItem(pillarKey, t, kindOf(s), contentDup(s));
-      });
+  var byP = {}; src.forEach(function (p) { (byP[p.pillar] = byP[p.pillar] || []).push(p); });
+  var order = PILLARS.map(function (pl) { return pl.key; }).filter(function (k) { return byP[k]; });
+  var body = '<p class="nd-hint">Copy a document — its steps, PICs and content — into a new draft in <b>' + esc(PILLAR_LABEL[pillarKey] || pillarKey) + '</b>.</p>' +
+    '<div class="dup-scroll">' +
+    order.map(function (k) {
+      var list = byP[k].slice().sort(function (a, b) { return (a.title || '').localeCompare(b.title || ''); });
+      return '<details class="dup-pil"' + (k === pillarKey ? ' open' : '') + '><summary class="dup-pil__hd">' + esc(PILLAR_LABEL[k] || k) + '<span class="dup-pil__n">' + list.length + '</span></summary>' +
+        list.map(function (p) { return '<button type="button" class="dup-row" data-pid="' + esc(p.process_id) + '">' +
+          '<span class="dup-row__t">' + esc(p.title) + '</span>' +
+          '<span class="cat-tag cat-tag--' + categoryOf(p).toLowerCase() + '">' + esc(categoryOf(p)) + '</span>' +
+          '<span class="dup-row__k">' + esc(KIND_LABEL[kindOf(p)]) + '</span></button>'; }).join('') +
+        '</details>';
+    }).join('') + '</div>';
+  var h = Modal.custom('Duplicate a document', body, [{ label: 'Cancel', onClick: function () { Modal.close(); } }]);
+  h.querySelectorAll('.dup-row').forEach(function (b) { b.onclick = function () {
+    var s = DOC.processes.filter(function (x) { return x.process_id === b.getAttribute('data-pid'); })[0]; if (!s) return;
+    Modal.close();
+    Modal.prompt('Name the copy', 'Name for the duplicated document:', s.title + ' (copy)', function (t) {
+      if (!t || !t.trim()) return;
+      makeNewItem(pillarKey, t, kindOf(s), contentDup(s), categoryOf(s));
     });
+  }; });
 }
 
 /* --------------------------- item (read-only) --------------------------- */
