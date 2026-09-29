@@ -2398,30 +2398,37 @@ function moveItem(p) {
     return '<option' + ((p.country || CAREER_COUNTRIES[0]) === c ? ' selected' : '') + '>' + esc(c) + '</option>'; }).join('') + '</select>';
   var buSel = '<select id="mvBU" class="mv-sel">' + CAREER_BUS.map(function (b) {
     return '<option' + ((p.bu || CAREER_BUS[0]) === b ? ' selected' : '') + '>' + esc(b) + '</option>'; }).join('') + '</select>';
+  var curCat = categoryOf(p);
+  var catSel = '<select id="mvCat" class="mv-sel">' + CATEGORIES.map(function (c) {
+    return '<option value="' + esc(c) + '"' + (c === curCat ? ' selected' : '') + '>' + esc(c) + (c === curCat ? ' (current)' : '') + '</option>'; }).join('') + '</select>';
   var live = p.status === 'live';
   var statusSel = '<select id="mvStatus" class="mv-sel"><option value="keep">Keep its status &amp; history' + (live ? ' (Live stays Live)' : '') + '</option><option value="draft">Move as a Draft' + (live ? ' (unpublish)' : '') + '</option></select>';
   var body = '<div class="mv-field"><label>Pillar</label>' + pillarSel + '</div>' +
     '<div class="mv-field" id="mvCareer" hidden><label>Country &amp; business unit</label><div class="mv-two">' + countrySel + buSel + '</div></div>' +
+    '<div class="mv-field" id="mvCatWrap"><label>Category (SOP / Alignment / Policy)</label>' + catSel + '</div>' +
     '<div class="mv-field"><label>Status</label>' + statusSel + '</div>';
   var h = Modal.custom('Move “' + esc(p.title) + '”', body, [
     { label: 'Cancel', onClick: function () { Modal.close(); } },
     { label: 'Move', primary: true, onClick: doMove } ]);
-  var pillarEl = h.querySelector('#mvPillar'), careerWrap = h.querySelector('#mvCareer');
-  function syncCareer() { careerWrap.hidden = pillarEl.value !== CAREER_KEY; }
+  var pillarEl = h.querySelector('#mvPillar'), careerWrap = h.querySelector('#mvCareer'), catWrap = h.querySelector('#mvCatWrap');
+  function syncCareer() { var isCar = pillarEl.value === CAREER_KEY; careerWrap.hidden = !isCar; catWrap.hidden = isCar; }
   pillarEl.onchange = syncCareer; syncCareer();
   function doMove() {
     var target = pillarEl.value, asDraft = h.querySelector('#mvStatus').value === 'draft';
-    if (target === p.pillar && !asDraft && (target !== CAREER_KEY)) { Modal.close(); return; }
-    var prev = { pillar: p.pillar, country: p.country, bu: p.bu, status: p.status };
-    p.pillar = target;
+    var newCat = (target === CAREER_KEY) ? curCat : h.querySelector('#mvCat').value;
+    var noChange = target === p.pillar && newCat === curCat && !asDraft && target !== CAREER_KEY;
+    if (noChange) { Modal.close(); return; }
+    var prev = { pillar: p.pillar, country: p.country, bu: p.bu, status: p.status, category: p.category };
+    p.pillar = target; p.category = newCat;
     if (target === CAREER_KEY) { p.country = h.querySelector('#mvCountry').value; p.bu = h.querySelector('#mvBU').value; }
     else { delete p.country; delete p.bu; }
     if (asDraft) { p.status = 'draft'; p.review = 'none'; p._unpublish = true; }
     Modal.close();
-    persist('Moved: ' + p.title + ' → ' + (PILLAR_LABEL[target] || target), function (ok, r) {
-      if (!ok) { p.pillar = prev.pillar; p.country = prev.country; p.bu = prev.bu; p.status = prev.status; delete p._unpublish; Modal.alert('Move failed', errText(r)); return; }
+    var moved = target !== prev.pillar;
+    persist((moved ? 'Moved: ' : 'Re-categorised: ') + p.title + (moved ? ' → ' + (PILLAR_LABEL[target] || target) : ' → ' + newCat), function (ok, r) {
+      if (!ok) { p.pillar = prev.pillar; p.country = prev.country; p.bu = prev.bu; p.status = prev.status; p.category = prev.category; delete p._unpublish; Modal.alert('Move failed', errText(r)); return; }
       notifyServer('Moved', p);
-      Modal.alert('Moved', '“' + esc(p.title) + '” is now in ' + esc(PILLAR_LABEL[target] || target) + '.');
+      Modal.alert(moved ? 'Moved' : 'Updated', '“' + esc(p.title) + '” is now in ' + esc(PILLAR_LABEL[target] || target) + (target === CAREER_KEY ? '' : ' · ' + esc(newCat)) + '.');
       goProcess(target, p.process_id);
     });
   }
