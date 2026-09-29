@@ -19,7 +19,7 @@
 <title>L&amp;D Playbook</title>
 <style>
 /* ==========================================================================
-   Logistics Handbook — Pizza 4P's brand tokens & components
+   L&D Playbook (lnd-playbook) — Pizza 4P's brand tokens & components
    ========================================================================== */
 
 @font-face{
@@ -5070,7 +5070,7 @@ function notifyPublish(p) {
 }
 function updateAdminLink() { $('adminLink').hidden = !isAdmin(); }
 function wireBrand() {
-  var mark = $('brandMark'); if (LOGO_SRC) mark.innerHTML = '<img src="' + LOGO_SRC + '" alt="EDL" class="hb-topbar__logo">';
+  var mark = $('brandMark'); if (LOGO_SRC) mark.innerHTML = '<img src="' + LOGO_SRC + '" alt="L&D Playbook" class="hb-topbar__logo">';
   $('brandLink').onclick = function (ev) { ev.preventDefault(); goHome(); };
   $('adminLink').onclick = function (ev) { ev.preventDefault(); goAdmin(); };
 }
