@@ -1205,6 +1205,7 @@ textarea{resize:vertical;min-height:60px;line-height:1.5}
     <label class="mk-hint" id="pcountryWrap" hidden>Country <select id="pcountry" aria-label="Country"></select></label>
     <label class="mk-hint" id="pbuWrap" hidden>Business unit <select id="pbu" aria-label="Business unit"></select></label>
     <label class="mk-hint">Reviewer <select id="previewer" aria-label="Reviewer"></select></label>
+    <label class="mk-hint" id="pworkunitWrap" hidden>Effort unit <select id="pworkunit" aria-label="Effort unit"><option value="day">Days</option><option value="week">Weeks</option><option value="hour">Hours</option></select></label>
     <div class="mk-grow"></div>
     <button class="mk-btn" id="recallBtn" hidden title="Pull it back to Draft">↩ Recall</button>
     <button class="mk-btn" id="archiveBtn" hidden title="Move to Archived (hidden from viewers)">Archive</button>
@@ -1932,7 +1933,7 @@ var MARK_DATA_URI = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABDgAAAM7CAYAA
       if ((n.type === 'action' || n.type === 'decision') && (wd != null || np != null)) {
         var parts = [];
         if (np != null) parts.push(np + ' doer' + (np === 1 ? '' : 's'));
-        if (wd != null) { var tot = Math.round(wd * (np != null ? np : 1) * 100) / 100; parts.push(tot + ' wd'); }
+        if (wd != null) { var tot = Math.round(wd * (np != null ? np : 1) * 100) / 100; parts.push(tot + ' ' + (opts.unitAb || 'wd')); }
         var badge = document.createElement('span');
         badge.className = 'dg-node-badge';
         badge.textContent = parts.join(' · ');
@@ -2251,6 +2252,15 @@ var GUIDE_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stro
 var TRASH_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6M10 11v6M14 11v6"/></svg>';
 
 var KIND_LABEL = { process: 'Process', alignment: 'Alignment' };
+/* Effort unit is chosen once per process (week / day / hour). Stored in the
+   content JSON as p.workingUnit (default 'day'), so no DB change. Conversion
+   basis when an equivalent is shown: 1 week = 5 days, 1 day = 8 hours. */
+var WD_UNITS = {
+  day:  { key: 'day',  per: 'working days / person',  total: 'total working days',  one: 'working day',  many: 'working days',  ab: 'wd', sel: 'Days',  field: 'Working days / person' },
+  week: { key: 'week', per: 'working weeks / person', total: 'total working weeks', one: 'working week', many: 'working weeks', ab: 'ww', sel: 'Weeks', field: 'Working weeks / person' },
+  hour: { key: 'hour', per: 'hours / person',         total: 'total hours',         one: 'hour',         many: 'hours',         ab: 'h',  sel: 'Hours', field: 'Hours / person' }
+};
+function unitOf(p) { return WD_UNITS[(p && p.workingUnit) || 'day'] || WD_UNITS.day; }
 var KIND_PLURAL = { process: 'Processes', alignment: 'Alignments' };
 var KINDS = ['process', 'alignment'];
 var STATUSES = ['draft', 'live', 'archived'];
@@ -2393,13 +2403,14 @@ function moveItem(p) {
 /* One step rendered as a flat block for the PDF (number badge + name on one line,
    then indented meta / description / sub-steps / files / note) — deliberately no
    nested boxes, just a thin divider between steps. */
-function pdfStepHtml(s, num) {
+function pdfStepHtml(s, num, unit) {
+  unit = unit || WD_UNITS.day;
   var isDec = s.type === 'decision';
   var pers = (s.persons != null && s.persons !== '') ? Number(s.persons) : null;
   var wd = (s.workingDays != null && s.workingDays !== '') ? s.workingDays : null;
   var meta = [];
   if (s.lane) meta.push('PIC: ' + esc(picLabel(s)));
-  if (wd != null) meta.push(esc(wd) + ' wd/person' + (pers != null ? ' × ' + pers + ' = ' + round2(Number(wd) * pers) + ' wd' : ''));
+  if (wd != null) meta.push(esc(wd) + ' ' + unit.ab + '/person' + (pers != null ? ' × ' + pers + ' = ' + round2(Number(wd) * pers) + ' ' + unit.ab : ''));
   else if (pers != null) meta.push(pers + (pers === 1 ? ' doer' : ' doers'));
   if (s.timeline) meta.push('Timeline: ' + esc(s.timeline));
   var subs = (s.substeps || []).filter(function (x) { return x && (x.label || x.desc); });
@@ -2458,7 +2469,7 @@ function exportPDF(p) {
     try {
       g = AutoLayout.layout({ title: p.title, subtitle: p.subtitle, steps: p.steps, lanes: p.lanes || [] });
       g.nodes.forEach(function (n) { if (n.number) numMap[n.id] = n.number; });
-      var dh = DiagramRender.render(dgWrap, g, {});
+      var dh = DiagramRender.render(dgWrap, g, { unitAb: unitOf(p).ab });
       /* Fit the WHOLE flowchart onto page 1 under the header, and centre it. */
       var headerH = (host.querySelector('.print-hd') || {}).offsetHeight || 120;
       var availH = PH - headerH - 70;
@@ -2487,7 +2498,7 @@ function exportPDF(p) {
     });
     var detail = groups.map(function (gr) {
       var head = gr.name ? '<h3 class="pphase">' + esc((gr.key !== '_' ? gr.key + '. ' : '') + gr.name) + '</h3>' : '';
-      return head + gr.steps.map(function (s) { return pdfStepHtml(s, numMap[s.id]); }).join('');
+      return head + gr.steps.map(function (s) { return pdfStepHtml(s, numMap[s.id], unitOf(p)); }).join('');
     }).join('');
     var steps = document.createElement('div'); steps.className = 'print-steps';
     steps.innerHTML = '<h2 class="print-h2">Step details</h2>' + (detail || '<p>No steps.</p>');
@@ -2668,11 +2679,12 @@ function processTotals(p) {
 }
 /* Trim floating-point noise so 27.950000000000003 shows as 27.95. */
 function round2(n) { return Math.round((Number(n) || 0) * 100) / 100; }
-function totalDaysText(s) {
+function totalDaysText(s, unit) {
+  unit = unit || WD_UNITS.day;
   var wd = (s.workingDays != null && s.workingDays !== '') ? Number(s.workingDays) : null;
   var n = (s.persons != null && s.persons !== '') ? Number(s.persons) : null;
   if (wd == null || n == null) return '<span style="color:var(--ink-faint)">— fill in both fields above —</span>';
-  return '<b>' + (wd * n) + '</b> working day' + (wd * n === 1 ? '' : 's') + ' <span style="color:var(--ink-faint)">(' + wd + ' × ' + n + ')</span>';
+  return '<b>' + round2(wd * n) + '</b> ' + (wd * n === 1 ? unit.one : unit.many) + ' <span style="color:var(--ink-faint)">(' + wd + ' × ' + n + ')</span>';
 }
 function counts(p) { return {
   steps: (p.steps || []).filter(function (s) { return s.type !== 'start' && s.type !== 'end'; }).length,
@@ -2960,7 +2972,8 @@ function htmlToText(html) {
 
 /* Shared detail card (website + editor preview), including guide images. */
 var TYPE_DOT = { action: '#02499D', decision: '#BF6B1F', start: '#2A4728', end: '#2A4728' };
-function renderDetailCard(step) {
+function renderDetailCard(step, unit) {
+  unit = unit || WD_UNITS.day;
   if (!step) return '<div class="dp"><div class="dp-empty-state">' +
     '<span class="dp-empty-state__icon">→</span>' +
     '<span>Click a step to see who does it, when it happens, and which files or images it uses.</span></div></div>';
@@ -2983,9 +2996,9 @@ function renderDetailCard(step) {
   var showDays = isWork && step.workingDays != null && step.workingDays !== '';
   var pers = (step.persons != null && step.persons !== '') ? Number(step.persons) : null;
   var sub = [];
-  if (showDays) sub.push(esc(step.workingDays) + ' working day' + (step.workingDays == 1 ? '' : 's') + ' / person');
+  if (showDays) sub.push(esc(step.workingDays) + ' ' + (step.workingDays == 1 ? unit.one : unit.many) + ' / person');
   if (pers != null) sub.push(pers + ' ' + (pers === 1 ? 'doer' : 'doers'));
-  if (showDays && pers != null) sub.push('Total ' + (Number(step.workingDays) * pers) + ' working days');
+  if (showDays && pers != null) sub.push('Total ' + round2(Number(step.workingDays) * pers) + ' ' + unit.many);
   var images = (step.images || []).filter(function (im) { return im && im.src; });
   var imgHtml = images.length ? '<div class="dp-images"><span class="dp-images__label">Guide images / video</span>' +
     '<div class="dp-images__grid">' + images.map(function (im) {
@@ -3974,12 +3987,13 @@ function drawProcess(p) {
   /* The "working days" estimate is L&D's own effort, so the note only applies to
      processes L&D actually run (a step whose PIC is EDL / TPM / Intern). */
   var ldRun = (refFlow.steps || []).some(function (s) { return /(^|[^A-Za-z])(EDL|TPM|Intern)([^A-Za-z]|$)/i.test(s.lane || ''); });
+  var u = unitOf(p);
   var metaChips = '<div class="proc-meta"><span class="proc-meta__chip">' + plural(c.steps, 'step') + '</span>' +
     '<span class="proc-meta__chip">' + plural(c.gates, 'review gate') + '</span>' +
-    (t.hasDays ? '<span class="proc-meta__chip">' + t.perPersonDays + ' working days / person</span>' : '') +
+    (t.hasDays ? '<span class="proc-meta__chip">' + t.perPersonDays + ' ' + u.per + '</span>' : '') +
     (t.hasPIC ? '<span class="proc-meta__chip">No. PIC ' + t.peakPIC + '</span>' : '') +
-    (t.hasDays ? '<span class="proc-meta__chip">' + t.totalDays + ' total working days</span>' : '') + '</div>' +
-    (t.hasDays && ldRun ? '<p class="proc-meta__note">Working days are estimated from how many days L&amp;D do each step within a month.</p>' : '');
+    (t.hasDays ? '<span class="proc-meta__chip">' + t.totalDays + ' ' + u.total + '</span>' : '') + '</div>' +
+    (t.hasDays && ldRun ? '<p class="proc-meta__note">Effort (' + esc(u.many) + ') is estimated from how much time L&amp;D spend on each step within a month.</p>' : '');
   /* Mode segmented control — only when the process has BU variants */
   function seg(m, label) { return '<button type="button" class="hb-modeseg' + (viewMode === m ? ' is-on' : '') + '" data-mode="' + m + '">' + label + '</button>'; }
   var modeCtl = vs.length ? '<span class="hb-modebar">' + seg('diagram', 'Diagram') + seg('compare', 'Compare') + seg('matrix', 'All BUs') + '</span>' : '';
@@ -4028,12 +4042,12 @@ function renderProcDiagram(p) {
     var z = (keepZoom && siteHandle) ? siteHandle.scale() : null;
     try {
       var g = AutoLayout.layout({ title: p.title, subtitle: p.subtitle, steps: flow.steps, lanes: flow.lanes || [] });
-      siteHandle = DiagramRender.render($('sdiag'), g, { selected: sel, onPick: pick, zoom: z, hint: 'Click a step to see full details, drag to move',
+      siteHandle = DiagramRender.render($('sdiag'), g, { selected: sel, onPick: pick, zoom: z, unitAb: unitOf(p).ab, hint: 'Click a step to see full details, drag to move',
         onToggle: function (id) { var st = steps.filter(function (s) { return s.id === id; })[0]; if (st) { st._open = !st._open; renderDiag(true); } } });
     } catch (err) { $('sdiag').innerHTML = '<div class="mk-empty">Diagram unavailable.</div>'; }
   }
   function pick(id) { sel = id; if (siteHandle) siteHandle.select(id);
-    $('sdetail').innerHTML = renderDetailCard(steps.filter(function (s) { return s.id === id; })[0]); }
+    $('sdetail').innerHTML = renderDetailCard(steps.filter(function (s) { return s.id === id; })[0], unitOf(p)); }
   sel = first && first.id;
   renderDiag();
   pick(first && first.id);
@@ -4057,7 +4071,7 @@ function renderProcCompare(p) {
   }
   try {
     var g = AutoLayout.layout({ title: p.title, subtitle: p.subtitle, steps: cf.steps, lanes: cf.lanes });
-    siteHandle = DiagramRender.render($('sdiag'), g, { zoom: null, hint: 'Click a step to see full details, drag to move',
+    siteHandle = DiagramRender.render($('sdiag'), g, { zoom: null, unitAb: unitOf(p).ab, hint: 'Click a step to see full details, drag to move',
       onPick: function (id) { if (siteHandle) siteHandle.select(id); highlight(id); } });
   } catch (err) { $('sdiag').innerHTML = '<div class="mk-empty">Compare unavailable.</div>'; }
 }
@@ -4222,6 +4236,13 @@ function drawEditorBar() {
     $('pcountry').innerHTML = CAREER_COUNTRIES.map(function (c) { return '<option' + (P.country === c ? ' selected' : '') + '>' + esc(c) + '</option>'; }).join('');
     $('pbu').innerHTML = CAREER_BUS.map(function (u) { return '<option' + (P.bu === u ? ' selected' : '') + '>' + esc(u) + '</option>'; }).join('');
   }
+  /* Effort unit (process only) */
+  var wuWrap = $('pworkunitWrap'), wuSel = $('pworkunit');
+  if (wuWrap) wuWrap.hidden = kindOf(P) !== 'process';
+  if (wuSel && kindOf(P) === 'process') {
+    wuSel.value = P.workingUnit || 'day';
+    wuSel.onchange = function () { P.workingUnit = wuSel.value; markDirty(); drawEditor(); };
+  }
   updatePublishButton();
 }
 
@@ -4371,12 +4392,12 @@ function drawBanner() {
   updatePublishButton();
 }
 function drawDiagram() {
-  var t = processTotals(P);
-  $('procTotals').innerHTML = (t.hasDays ? '<span class="proc-meta__chip">' + t.perPersonDays + ' wd / person</span>' : '') +
+  var t = processTotals(P); var u = unitOf(P);
+  $('procTotals').innerHTML = (t.hasDays ? '<span class="proc-meta__chip">' + t.perPersonDays + ' ' + u.ab + ' / person</span>' : '') +
     (t.hasPIC ? '<span class="proc-meta__chip">No. PIC ' + t.peakPIC + '</span>' : '') +
-    (t.hasDays ? '<span class="proc-meta__chip">' + t.totalDays + ' total wd</span>' : '') +
-    (t.missingDays ? '<span class="proc-meta__chip proc-meta__chip--warn" title="These steps have no working days yet, so the totals are a minimum.">⚠ ' + t.missingDays + '/' + t.actSteps + ' steps missing wd</span>' : '');
-  try { var g = AutoLayout.layout({ title: P.title, subtitle: P.subtitle, steps: EF.steps, lanes: EF.lanes }); dgHandle = DiagramRender.render($('diagram'), g, { selected: sel, onPick: selectStep, hint: 'Click a step to edit · drag to move',
+    (t.hasDays ? '<span class="proc-meta__chip">' + t.totalDays + ' total ' + u.ab + '</span>' : '') +
+    (t.missingDays ? '<span class="proc-meta__chip proc-meta__chip--warn" title="These steps have no effort set yet, so the totals are a minimum.">⚠ ' + t.missingDays + '/' + t.actSteps + ' steps missing ' + u.ab + '</span>' : '');
+  try { var g = AutoLayout.layout({ title: P.title, subtitle: P.subtitle, steps: EF.steps, lanes: EF.lanes }); dgHandle = DiagramRender.render($('diagram'), g, { selected: sel, onPick: selectStep, unitAb: unitOf(P).ab, hint: 'Click a step to edit · drag to move',
     onToggle: function (id) { var st = EF.steps.filter(function (x) { return x.id === id; })[0]; if (st) { st._open = !st._open; drawDiagram(); } } }); }
   catch (err) { try { console.error('drawDiagram failed:', err); } catch (e) {} $('diagram').innerHTML = '<div class="mk-empty">Cannot draw the diagram yet — fix the problems above.</div>'; }
 }
@@ -4444,9 +4465,9 @@ function drawForm() {
       '<input id="i_phase" list="phaseList" value="' + esc(s.phase || '') + '" placeholder="e.g. Before, During, After — or your own">' +
       '<datalist id="phaseList">' + phSug.map(function (p) { return '<option value="' + esc(p) + '">'; }).join('') + '</datalist>' +
       '<div class="mk-tip">Optional. Type any phase name; steps with the same phase group into a band down the left of the diagram.</div></div>';
-    h += '<div class="mk-f"><label for="i_days">Working days / person</label><input id="i_days" type="number" min="0" step="0.5" value="' + esc(s.workingDays == null ? '' : s.workingDays) + '" placeholder="e.g. 2"><div class="mk-tip">Optional. Calendar days ONE person spends on this step.</div></div>';
+    h += '<div class="mk-f"><label for="i_days">' + esc(unitOf(P).field) + '</label><input id="i_days" type="number" min="0" step="0.5" value="' + esc(s.workingDays == null ? '' : s.workingDays) + '" placeholder="e.g. 2"><div class="mk-tip">Optional. How much time ONE person spends on this step (' + esc(unitOf(P).many) + ').</div></div>';
     h += '<div class="mk-f"><label for="i_persons">People on this step</label><input id="i_persons" type="number" min="1" step="1" value="' + esc(s.persons == null ? '' : s.persons) + '" placeholder="e.g. 1"><div class="mk-tip">Optional.</div></div>';
-    h += '<div class="mk-f"><label>Total working days</label><div class="mk-readonly" id="totalDaysReadout">' + totalDaysText(s) + '</div><div class="mk-tip">Auto = Working days / person × People on this step.</div></div>';
+    h += '<div class="mk-f"><label>Total ' + esc(unitOf(P).many) + '</label><div class="mk-readonly" id="totalDaysReadout">' + totalDaysText(s, unitOf(P)) + '</div><div class="mk-tip">Auto = ' + esc(unitOf(P).field) + ' × People on this step.</div></div>';
     s.files = s.files || [];
     h += '<div class="mk-f"><label>Attach related files / links</label><div class="mk-tip" style="margin-top:0;margin-bottom:7px"><b>Upload a file</b> (PDF, Word, Excel…) or paste a share <b>link</b> (Google Drive, Sheet, etc.). (To attach an image/video, use the box below.)</div><div id="fileList">' + s.files.map(function (f, i) {
       var bad = f.url && !looksLikeUrl(f.url);
@@ -4493,7 +4514,7 @@ function drawForm() {
   var daysEl = $('i_days'); if (daysEl) daysEl.oninput = function () { s.workingDays = daysEl.value === '' ? null : parseFloat(daysEl.value); markDirty(); renderLivePreview(); refreshTotalDays(); drawBanner(); };
   var persEl = $('i_persons'); if (persEl) persEl.oninput = function () { s.persons = persEl.value === '' ? null : parseInt(persEl.value, 10); markDirty(); renderLivePreview(); refreshTotalDays(); drawBanner(); };
   var phEl = $('i_phase'); if (phEl) phEl.onchange = function () { s.phase = phEl.value || ''; markDirty(); draw(); };
-  function refreshTotalDays() { var el = $('totalDaysReadout'); if (el) el.innerHTML = totalDaysText(s); }
+  function refreshTotalDays() { var el = $('totalDaysReadout'); if (el) el.innerHTML = totalDaysText(s, unitOf(P)); }
   var stakeEl = $('i_stake'); if (stakeEl) stakeEl.oninput = function () { s.stakeholderDetail = stakeEl.value; markDirty(); renderLivePreview(); };
   F.querySelectorAll('[data-yes]').forEach(function (c) { c.onchange = function () {
     s.next = (s.next && !Array.isArray(s.next)) ? s.next : {};
@@ -4558,7 +4579,7 @@ function drawForm() {
   }
   function bind(id, key, isLabel) { var e = $(id); if (!e) return; e.oninput = function () { s[key] = e.value; markDirty(); if (isLabel) { drawBanner(); drawDiagram(); redrawListLabels(); } renderLivePreview(); }; }
   renderLivePreview();
-  function renderLivePreview() { $('livePreview').innerHTML = renderDetailCard(s); }
+  function renderLivePreview() { $('livePreview').innerHTML = renderDetailCard(s, unitOf(P)); }
 }
 function addAttachments(s, files) {
   s.images = s.images || [];
