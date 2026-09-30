@@ -1823,7 +1823,7 @@ var MARK_DATA_URI = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABDgAAAM7CAYAA
   root.AutoLayout = { layout: layout, flowOrder: flowOrder };
 })(typeof module !== 'undefined' ? module.exports : window);
 
-/* Renders AutoLayout's vertical geometry using the handbook's dg-* classes.
+/* Renders AutoLayout's vertical geometry using the playbook's dg-* classes.
    Lane headers run along the top; the flow reads top-to-bottom underneath.
    Selecting a step only toggles a class on the existing button — it never
    rebuilds the DOM, so the diagram's scroll position never jumps back to
@@ -2231,7 +2231,7 @@ var MARK_DATA_URI = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABDgAAAM7CAYAA
 
 </script>
 <script>
-/* ===================== unified handbook — mockup application =====================
+/* ===================== unified playbook — mockup application =====================
    One website-style view (Home -> pillar -> process/alignment). Editing happens
    inline, only for people whose account has edit rights on that item. Access is
    managed PER ITEM (not per pillar) through an admin screen, with sensible
@@ -3432,7 +3432,7 @@ function permanentDelete(p) {
   }, { danger: true, okLabel: 'Delete permanently' });
 }
 
-/* The single "how to use the handbook" guide, shown as a link line (not a card). */
+/* The single "how to use the playbook" guide, shown as a link line (not a card). */
 function guideDoc() { return DOC.processes.filter(function (p) { return p.pillar === 'guide' && canSee(p); })
   .sort(function (a, b) { return (a.status === 'live' ? 0 : 1) - (b.status === 'live' ? 0 : 1); })[0] || null; }
 
@@ -3534,7 +3534,7 @@ function drawHome() {
       (results.length ? '<div class="toc-grid">' + results.map(itemCard).join('') + '</div>' : '<p class="pl-empty">Nothing matches “' + esc(q) + '”.</p>') + '</section>';
   } else {
     var gd = guideDoc();
-    var guideLink = gd ? '<a href="#" class="hb-guidelink" id="guideLink">' + GUIDE_SVG + 'User guide — how to use this handbook</a>' : '';
+    var guideLink = gd ? '<a href="#" class="hb-guidelink" id="guideLink">' + GUIDE_SVG + 'User guide — how to use this playbook</a>' : '';
     var visList = DOC.processes.filter(function (p) { return canSee(p) && p.pillar !== 'guide'; });
     var seg = '<div class="hb-segrow" style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:16px">' +
       '<div class="hb-seg" role="group" aria-label="Group by" style="margin-bottom:0">' +
