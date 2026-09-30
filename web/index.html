@@ -1794,12 +1794,12 @@ var MARK_DATA_URI = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABDgAAAM7CAYAA
           }
         }
         var channelX = channelXFor(b.depth, a.depth) + BACK_GAP + (backSeen++) * BACK_GAP;
-        var gy1 = a.y - ROW_GAP * 0.5, gy2 = b.y + b.h + ROW_GAP * 0.5;
+        var gy1 = a.y - ROW_GAP * 0.5, midYb = b.y + b.h / 2;
         /* Cross-lane back arrow: leave the TOP into the gap above, along to the
-           right channel, up to the gap below the target, then into its bottom —
-           never crossing a box in between. */
-        var path = 'M' + x1c + ',' + a.y + ' L' + x1c + ',' + gy1 + ' L' + channelX + ',' + gy1 + ' L' + channelX + ',' + gy2 + ' L' + x2c + ',' + gy2 + ' L' + x2c + ',' + (b.y + b.h);
-        conns.push({ from: s.id, to: f.e.to, path: path, label: f.e.label, labelPos: { x: channelX - 6, y: (gy1 + gy2) / 2 - 8 }, back: true });
+           right channel, up to the target's mid-height, then into its RIGHT side —
+           avoids overlapping with the forward arrow leaving the target's bottom. */
+        var path = 'M' + x1c + ',' + a.y + ' L' + x1c + ',' + gy1 + ' L' + channelX + ',' + gy1 + ' L' + channelX + ',' + midYb + ' L' + (b.x + b.w) + ',' + midYb;
+        conns.push({ from: s.id, to: f.e.to, path: path, label: f.e.label, labelPos: { x: channelX - 6, y: (gy1 + midYb) / 2 - 8 }, back: true });
       });
     });
 
@@ -3523,7 +3523,7 @@ function drawHome() {
     '<div><h1 class="hb-h1">L&amp;D Playbook</h1>' +
     '<p class="hb-lede">Shape the game. Live the journey. Master the craft. <span style="color:var(--ink-faint)">— pick a pillar to get started.</span></p></div>' +
     '<span class="mk-search mk-search--home"><span class="mk-search__icon">' + SEARCH_SVG + '</span>' +
-    '<input id="homeSearchInput" placeholder="Search all processes & alignments…" value="' + esc(homeSearch) + '"></span>' +
+    '<input id="homeSearchInput" placeholder="Search all SOP, Alignment & Policy…" value="' + esc(homeSearch) + '"></span>' +
     '</div></section>';
 
   var bodyHtml;
@@ -4944,7 +4944,7 @@ function wireEditorChrome() {
   $('pstatus').onchange = function () { if (P) { P.status = $('pstatus').value; markDirty(); if (kindOf(P) === 'process') drawBanner(); else updatePublishButton(); } };
   $('pkind').onchange = function () { if (!P) return; var k = $('pkind').value;
     if (k === kindOf(P)) return;
-    Modal.confirm('Switch type?', 'Switching between Process and Alignment changes how this item is edited and shown. Continue?', function () {
+    Modal.confirm('Switch type?', 'Switching between Flowchart and Document changes how this item is edited and shown. Continue?', function () {
       P.kind = k;
       if (k === 'alignment' && P.body == null) P.body = '## Overview\n\nWrite the alignment / guideline here.';
       if (k === 'process' && !EF.steps) { EF.lanes = ['TPM','Intern','EDL','L&D Head','Stakeholders']; EF.owners = EF.lanes.slice();
@@ -5036,7 +5036,7 @@ function drawAdmin() {
   detail += '</div>';
 
   S.innerHTML = '<section class="toc-hero"><h1 class="hb-h1">Manage access</h1>' +
-    '<p class="hb-lede">Add teammates and set who can view or edit each process and alignment.</p></section>' +
+    '<p class="hb-lede">Add teammates and set who can view or edit each SOP, Alignment & Policy.</p></section>' +
     '<div class="adm-grid">' + left + detail + '</div>';
 
   S.querySelectorAll('[data-mem]').forEach(function (b) { b.onclick = function () { adminSel = b.getAttribute('data-mem'); drawAdmin(); }; });
