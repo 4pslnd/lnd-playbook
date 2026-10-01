@@ -1674,6 +1674,23 @@ var MARK_DATA_URI = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABDgAAAM7CAYAA
       nodes.forEach(function (n) { if (n.depth >= dLo && n.depth <= dHi) { var r = n.x + n.w; if (r > m) m = r; } });
       return m || rightEdge;
     }
+    var _fiMap = {};
+    steps.forEach(function (s) {
+      var a = pos[s.id]; if (!a) return;
+      outEdges(s).forEach(function (e) {
+        var b = pos[e.to]; if (!b) return;
+        if (b.depth > a.depth && b.depth - a.depth >= 2 && !back[s.id + '>' + e.to]) {
+          var k = e.to + '|' + a.depth;
+          if (!_fiMap[k]) _fiMap[k] = [];
+          _fiMap[k].push({ sid: s.id, tid: e.to, a: a, b: b, label: e.label });
+        }
+      });
+    });
+    var _fiEdge = {};
+    Object.keys(_fiMap).forEach(function (k) {
+      if (_fiMap[k].length < 2) { delete _fiMap[k]; return; }
+      _fiMap[k].forEach(function (g) { _fiEdge[g.sid + '>' + g.tid] = k; });
+    });
     steps.forEach(function (s) {
       var a = pos[s.id]; if (!a) return;
       var fwd = [], bk = [], side = [];
@@ -1681,6 +1698,7 @@ var MARK_DATA_URI = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABDgAAAM7CAYAA
         var b = pos[e.to]; if (!b) return;
         if (!!back[s.id + '>' + e.to] || b.depth < a.depth) bk.push({ e: e, b: b });      /* goes up → channel */
         else if (b.depth === a.depth) side.push({ e: e, b: b });                          /* same row → sideways */
+        else if (_fiEdge[s.id + '>' + e.to]) { /* handled by fan-in bus */ }
         else fwd.push({ e: e, b: b });                                                    /* goes down */
       });
       var x1 = a.x + a.w / 2, y1 = a.y + a.h;
@@ -1838,6 +1856,36 @@ var MARK_DATA_URI = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABDgAAAM7CAYAA
         var path = 'M' + x1c + ',' + a.y + ' L' + x1c + ',' + gy1 + ' L' + channelX + ',' + gy1 + ' L' + channelX + ',' + midYb + ' L' + (b.x + b.w) + ',' + midYb;
         conns.push({ from: s.id, to: f.e.to, path: path, label: f.e.label, labelPos: { x: channelX - 6, y: (gy1 + midYb) / 2 - 8 }, back: true });
         }
+      });
+    });
+
+    Object.keys(_fiMap).forEach(function (k) {
+      var grp = _fiMap[k], b = grp[0].b;
+      var x2 = b.x + b.w / 2, y2 = b.y;
+      var busY = grp[0].a.y + grp[0].a.h + ROW_GAP * 0.35;
+      var xs = grp.map(function (g) { return g.a.x + g.a.w / 2; });
+      var minX = Math.min.apply(null, xs), maxX = Math.max.apply(null, xs);
+      var skip = grp.map(function (g) { return g.sid; }).concat([grp[0].tid]);
+      var trunkX = x2;
+      if (vBlocked(trunkX, busY, y2, skip)) {
+        trunkX = (minX + maxX) / 2;
+        if (vBlocked(trunkX, busY, y2, skip)) {
+          trunkX = maxX + BACK_GAP;
+          if (vBlocked(trunkX, busY, y2, skip)) {
+            trunkX = channelXFor(grp[0].a.depth, b.depth) + BACK_GAP + (backSeen++) * BACK_GAP;
+          }
+        }
+      }
+      grp.forEach(function (g) {
+        var sx = g.a.x + g.a.w / 2, sy = g.a.y + g.a.h;
+        var path;
+        if (Math.abs(trunkX - x2) < 4) {
+          path = 'M' + sx + ',' + sy + ' L' + sx + ',' + busY + ' L' + trunkX + ',' + busY + ' L' + trunkX + ',' + y2;
+        } else {
+          var gy2 = y2 - ROW_GAP * 0.35;
+          path = 'M' + sx + ',' + sy + ' L' + sx + ',' + busY + ' L' + trunkX + ',' + busY + ' L' + trunkX + ',' + gy2 + ' L' + x2 + ',' + gy2 + ' L' + x2 + ',' + y2;
+        }
+        conns.push({ from: g.sid, to: g.tid, path: path, label: g.label, labelPos: { x: sx + 8, y: (sy + busY) / 2 }, back: false });
       });
     });
 
