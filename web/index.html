@@ -1809,6 +1809,16 @@ var MARK_DATA_URI = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABDgAAAM7CAYAA
           var gyUp = a.y - ROW_GAP * 0.5, midY = b.y + b.h / 2;
           var targetRight = x2c >= x1c;
           var edgeX = targetRight ? b.x : b.x + b.w, appX = targetRight ? b.x - 14 : b.x + b.w + 14;
+          /* Decision nodes exit from the side vertex to avoid overlapping with
+             the forward arrow that enters from above. */
+          if (a.type === 'decision') {
+            var dSideX = a.x + a.w, dSideY = a.y + a.h / 2;
+            if (!hBlocked(dSideY, dSideX, appX, skip) && !vBlocked(appX, dSideY, midY, skip)) {
+              var pathD = 'M' + dSideX + ',' + dSideY + ' L' + appX + ',' + dSideY + ' L' + appX + ',' + midY + ' L' + edgeX + ',' + midY;
+              conns.push({ from: s.id, to: f.e.to, path: pathD, label: f.e.label, labelPos: { x: appX, y: (dSideY + midY) / 2 - 8 }, back: true });
+              return;
+            }
+          }
           if (!hBlocked(gyUp, x1c, appX, skip) && !vBlocked(appX, gyUp, midY, skip)) {
             var pathA = 'M' + x1c + ',' + a.y + ' L' + x1c + ',' + gyUp + ' L' + appX + ',' + gyUp + ' L' + appX + ',' + midY + ' L' + edgeX + ',' + midY;
             conns.push({ from: s.id, to: f.e.to, path: pathA, label: f.e.label, labelPos: { x: appX, y: gyUp - 8 }, back: true });
@@ -1817,11 +1827,16 @@ var MARK_DATA_URI = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABDgAAAM7CAYAA
         }
         var channelX = channelXFor(b.depth, a.depth) + BACK_GAP + (backSeen++) * BACK_GAP;
         var gy1 = a.y - ROW_GAP * 0.5, midYb = b.y + b.h / 2;
-        /* Cross-lane back arrow: leave the TOP into the gap above, along to the
-           right channel, up to the target's mid-height, then into its RIGHT side —
-           avoids overlapping with the forward arrow leaving the target's bottom. */
+        /* Decision nodes: exit from the RIGHT vertex so the back arrow doesn't
+           share a vertical segment with a forward arrow entering from above. */
+        if (a.type === 'decision') {
+          var dRightX = a.x + a.w, dMidY = a.y + a.h / 2;
+          var path = 'M' + dRightX + ',' + dMidY + ' L' + channelX + ',' + dMidY + ' L' + channelX + ',' + midYb + ' L' + (b.x + b.w) + ',' + midYb;
+          conns.push({ from: s.id, to: f.e.to, path: path, label: f.e.label, labelPos: { x: channelX - 6, y: (dMidY + midYb) / 2 - 8 }, back: true });
+        } else {
         var path = 'M' + x1c + ',' + a.y + ' L' + x1c + ',' + gy1 + ' L' + channelX + ',' + gy1 + ' L' + channelX + ',' + midYb + ' L' + (b.x + b.w) + ',' + midYb;
         conns.push({ from: s.id, to: f.e.to, path: path, label: f.e.label, labelPos: { x: channelX - 6, y: (gy1 + midYb) / 2 - 8 }, back: true });
+        }
       });
     });
 
