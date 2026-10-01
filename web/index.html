@@ -1529,6 +1529,32 @@ var MARK_DATA_URI = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABDgAAAM7CAYAA
        assignDepthTR). */
     var depth = assignDepthTR(steps, byId, back, startId);
 
+    /* Stagger parallel fan-out: when a non-decision step fans out to 3+
+       children that all land on the same row, stack them vertically (one
+       per row) so the diagram reads as a column, not a wide row. */
+    (function () {
+      steps.forEach(function (s) {
+        if (s.type === 'decision') return;
+        var fwd = outEdges(s).filter(function (e) { return byId[e.to] && !back[s.id + '>' + e.to]; });
+        if (fwd.length < 3) return;
+        var baseD = depth[s.id] + 1;
+        var same = fwd.filter(function (e) { return depth[e.to] === baseD; });
+        if (same.length < 3) return;
+        for (var i = 1; i < same.length; i++) depth[same[i].to] = baseD + i;
+      });
+      var changed = true;
+      while (changed) {
+        changed = false;
+        steps.forEach(function (s) {
+          outEdges(s).forEach(function (e) {
+            if (byId[e.to] && !back[s.id + '>' + e.to] && depth[e.to] <= depth[s.id]) {
+              depth[e.to] = depth[s.id] + 1; changed = true;
+            }
+          });
+        });
+      }
+    })();
+
     var hasPhase = steps.some(function (s) { return s.phase; });
     var PHASE_W = hasPhase ? 92 : 0;
 
@@ -1691,6 +1717,31 @@ var MARK_DATA_URI = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABDgAAAM7CAYAA
       if (_fiMap[k].length < 2) { delete _fiMap[k]; return; }
       _fiMap[k].forEach(function (g) { _fiEdge[g.sid + '>' + g.tid] = k; });
     });
+    /* Fan-out trunk: a step that fans out to 3+ children on consecutive
+       rows (staggered) gets a single vertical trunk with horizontal
+       branches instead of individual skip-row arrows. */
+    var _foMap = {};
+    steps.forEach(function (s) {
+      var a = pos[s.id]; if (!a) return;
+      var fwd = outEdges(s).filter(function (e) {
+        return pos[e.to] && pos[e.to].depth > a.depth && !back[s.id + '>' + e.to] && !_fiEdge[s.id + '>' + e.to];
+      });
+      if (fwd.length < 3) return;
+      var sorted = fwd.map(function (e) { return { e: e, b: pos[e.to] }; })
+        .sort(function (x, y) { return x.b.depth - y.b.depth; });
+      var consecutive = sorted[0].b.depth === a.depth + 1;
+      for (var ci = 1; ci < sorted.length && consecutive; ci++) {
+        if (sorted[ci].b.depth !== sorted[0].b.depth + ci) consecutive = false;
+      }
+      if (!consecutive) return;
+      _foMap[s.id] = sorted.map(function (x) {
+        return { sid: s.id, tid: x.e.to, a: a, b: x.b, label: x.e.label };
+      });
+    });
+    var _foEdge = {};
+    Object.keys(_foMap).forEach(function (k) {
+      _foMap[k].forEach(function (g) { _foEdge[g.sid + '>' + g.tid] = k; });
+    });
     steps.forEach(function (s) {
       var a = pos[s.id]; if (!a) return;
       var fwd = [], bk = [], side = [];
@@ -1699,6 +1750,7 @@ var MARK_DATA_URI = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABDgAAAM7CAYAA
         if (!!back[s.id + '>' + e.to] || b.depth < a.depth) bk.push({ e: e, b: b });      /* goes up → channel */
         else if (b.depth === a.depth) side.push({ e: e, b: b });                          /* same row → sideways */
         else if (_fiEdge[s.id + '>' + e.to]) { /* handled by fan-in bus */ }
+        else if (_foEdge[s.id + '>' + e.to]) { /* handled by fan-out trunk */ }
         else fwd.push({ e: e, b: b });                                                    /* goes down */
       });
       var x1 = a.x + a.w / 2, y1 = a.y + a.h;
@@ -1909,6 +1961,22 @@ var MARK_DATA_URI = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABDgAAAM7CAYAA
           conns.push({ from: g.sid, to: g.tid, path: path, label: g.label, labelPos: { x: sx + 8, y: (sy + busY) / 2 }, back: false });
         });
       }
+    });
+
+    /* Draw fan-out trunks: vertical trunk left of children, horizontal
+       branch at each child's row entering its left edge. */
+    Object.keys(_foMap).forEach(function (k) {
+      var grp = _foMap[k], a = grp[0].a;
+      var x1 = a.x + a.w / 2, y1 = a.y + a.h;
+      var busY = y1 + ROW_GAP * 0.35;
+      var minChildX = Math.min.apply(null, grp.map(function (g) { return g.b.x; }));
+      var trunkX = Math.min(x1, minChildX) - COL_GAP * 0.6;
+      grp.forEach(function (g) {
+        var entryY = g.b.y + g.b.h * 0.5;
+        var entryX = g.b.x;
+        var path = 'M' + x1 + ',' + y1 + ' L' + x1 + ',' + busY + ' L' + trunkX + ',' + busY + ' L' + trunkX + ',' + entryY + ' L' + entryX + ',' + entryY;
+        conns.push({ from: g.sid, to: g.tid, path: path, label: g.label, labelPos: { x: trunkX - 8, y: entryY - 8 }, back: false });
+      });
     });
 
     var backRows = conns.filter(function (c) { return c.back; }).length;
