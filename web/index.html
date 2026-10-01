@@ -1264,7 +1264,8 @@ textarea{resize:vertical;min-height:60px;line-height:1.5}
         <div class="mk-list-head"><h2 class="mk-h2" id="stepsHead">Steps</h2></div>
         <div class="mk-add" style="margin-bottom:10px">
           <button class="mk-btn" data-add="action">+ Action</button>
-          <button class="mk-btn" data-add="decision">+ Review</button></div>
+          <button class="mk-btn" data-add="decision">+ Review</button>
+          <button class="mk-btn" id="addParallel" title="Add a parallel branch to the selected step">+ Parallel</button></div>
         <div id="list"></div>
       </div>
       <div class="mk-col mk-col--form">
@@ -5017,6 +5018,34 @@ function wireEditorChrome() {
     EF.steps.forEach(function (s) { taken[s.id] = 1; }); while (taken[id]) id = base + '_' + (i++);
     EF.steps.push({ id: id, label: t === 'decision' ? 'Review' : 'New step', lane: EF.owners[0] || EF.lanes[0] || 'Intern', type: t, next: t === 'decision' ? { yes: [], no: [] } : [], task: '', timeline: '', files: [], images: [], note: '' });
     sel = id; rebuildLanes(); markDirty(); draw(); }; });
+  $('addParallel').onclick = function () {
+    if (!P || kindOf(P) !== 'process' || !sel) { Modal.alert('Select a step', 'Select an action step first, then click + Parallel to add a step that runs alongside it.'); return; }
+    var cur = EF.steps.filter(function (s) { return s.id === sel; })[0];
+    if (!cur || cur.type === 'start' || cur.type === 'end' || cur.type === 'decision') { Modal.alert('Cannot parallel', 'Parallel branches work with action steps. Select an action step.'); return; }
+    var preds = [], succs = cur.next ? (Array.isArray(cur.next) ? cur.next.slice() : []) : [];
+    EF.steps.forEach(function (s) {
+      var n = s.next; if (!n) return;
+      if (Array.isArray(n)) { n.forEach(function (t) { if (t === cur.id) preds.push({ step: s, label: null }); }); }
+      else if (typeof n === 'object') {
+        (n.yes || []).forEach(function (t) { if (t === cur.id) preds.push({ step: s, label: 'Yes' }); });
+        (n.no || []).forEach(function (t) { if (t === cur.id) preds.push({ step: s, label: 'No' }); });
+      }
+    });
+    if (!preds.length) { Modal.alert('Cannot parallel', 'This step has no predecessor — add it to the flow first.'); return; }
+    var base = 'par_step', id = base, i = 2, taken = {};
+    EF.steps.forEach(function (s) { taken[s.id] = 1; }); while (taken[id]) id = base + '_' + (i++);
+    var ns = { id: id, label: 'Parallel step', lane: EF.owners[1] || EF.owners[0] || EF.lanes[1] || EF.lanes[0] || 'Intern', type: 'action', next: succs.slice(), task: '', timeline: '', files: [], images: [], note: '' };
+    EF.steps.push(ns);
+    preds.forEach(function (p) {
+      var s = p.step, nx = s.next;
+      if (Array.isArray(nx)) { if (nx.indexOf(id) < 0) nx.push(id); }
+      else if (nx && typeof nx === 'object') {
+        if (p.label === 'Yes') { if (nx.yes.indexOf(id) < 0) nx.yes.push(id); }
+        else if (p.label === 'No') { if (nx.no.indexOf(id) < 0) nx.no.push(id); }
+      }
+    });
+    sel = id; rebuildLanes(); markDirty(); draw();
+  };
   $('backToView').onclick = function () {
     if (dirty) Modal.confirm('Leave without saving?', 'You have unsaved changes. Leaving keeps them only in this browser tab.', function () { backFromEditor(); }, { okLabel: 'Leave' });
     else backFromEditor(); };
