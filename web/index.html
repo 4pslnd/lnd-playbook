@@ -1529,9 +1529,10 @@ var MARK_DATA_URI = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABDgAAAM7CAYAA
        assignDepthTR). */
     var depth = assignDepthTR(steps, byId, back, startId);
 
-    /* Stagger parallel fan-out: when a non-decision step fans out to 3+
-       children that all land on the same row, stack them vertically (one
-       per row) so the diagram reads as a column, not a wide row. */
+    /* Stagger parallel fork-join: when a non-decision step fans out to 3+
+       children that ALL converge to the SAME single target, stack them
+       vertically so the diagram reads as a column instead of a wide row.
+       Only applies to the fork-join pattern (A → [B,C,D] → E). */
     (function () {
       steps.forEach(function (s) {
         if (s.type === 'decision') return;
@@ -1540,6 +1541,17 @@ var MARK_DATA_URI = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABDgAAAM7CAYAA
         var baseD = depth[s.id] + 1;
         var same = fwd.filter(function (e) { return depth[e.to] === baseD; });
         if (same.length < 3) return;
+        /* Check fork-join: every child must have exactly one forward successor
+           and all those successors must be the same node. */
+        var joinId = null, allJoin = true;
+        same.forEach(function (e) {
+          var child = byId[e.to]; if (!child) { allJoin = false; return; }
+          var cFwd = outEdges(child).filter(function (ce) { return byId[ce.to] && !back[child.id + '>' + ce.to]; });
+          if (cFwd.length !== 1) { allJoin = false; return; }
+          if (joinId === null) joinId = cFwd[0].to;
+          else if (cFwd[0].to !== joinId) allJoin = false;
+        });
+        if (!allJoin || !joinId) return;
         for (var i = 1; i < same.length; i++) depth[same[i].to] = baseD + i;
       });
       var changed = true;
