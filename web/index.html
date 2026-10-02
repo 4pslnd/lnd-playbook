@@ -1845,10 +1845,15 @@ var MARK_DATA_URI = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABDgAAAM7CAYAA
               path = 'M' + x1 + ',' + (a.y + a.h) + ' L' + x1 + ',' + gy1 + ' L' + x2 + ',' + gy1 + ' L' + x2 + ',' + y2;
               conns.push({ from: s.id, to: f.e.to, path: path, label: f.e.label, labelPos: { x: (x1 + x2) / 2, y: gy1 - 8 }, back: false });
             } else {
-              var channelX = channelXFor(a.depth, b.depth) + BACK_GAP + (backSeen++) * BACK_GAP;
               var gy2 = b.y - ROW_GAP * 0.5;
-              path = 'M' + x1 + ',' + (a.y + a.h) + ' L' + x1 + ',' + gy1 + ' L' + channelX + ',' + gy1 + ' L' + channelX + ',' + gy2 + ' L' + x2 + ',' + gy2 + ' L' + x2 + ',' + y2;
-              conns.push({ from: s.id, to: f.e.to, path: path, label: f.e.label, labelPos: { x: channelX - 6, y: (gy1 + gy2) / 2 - 8 }, back: true });
+              if (!vBlocked(x1, gy1, gy2, skip) && !hBlocked(gy2, x1, x2, skip)) {
+                path = 'M' + x1 + ',' + (a.y + a.h) + ' L' + x1 + ',' + gy2 + ' L' + x2 + ',' + gy2 + ' L' + x2 + ',' + y2;
+                conns.push({ from: s.id, to: f.e.to, path: path, label: f.e.label, labelPos: { x: (x1 + x2) / 2, y: gy2 - 8 }, back: false });
+              } else {
+                var channelX = channelXFor(a.depth, b.depth) + BACK_GAP + (backSeen++) * BACK_GAP;
+                path = 'M' + x1 + ',' + (a.y + a.h) + ' L' + x1 + ',' + gy1 + ' L' + channelX + ',' + gy1 + ' L' + channelX + ',' + gy2 + ' L' + x2 + ',' + gy2 + ' L' + x2 + ',' + y2;
+                conns.push({ from: s.id, to: f.e.to, path: path, label: f.e.label, labelPos: { x: channelX - 6, y: (gy1 + gy2) / 2 - 8 }, back: true });
+              }
             }
             }
           } else {
