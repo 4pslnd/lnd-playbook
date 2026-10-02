@@ -1554,13 +1554,10 @@ var MARK_DATA_URI = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABDgAAAM7CAYAA
         if (!allJoin || !joinId) return;
         for (var i = 1; i < same.length; i++) depth[same[i].to] = baseD + i;
       });
-      var _origD = {};
-      steps.forEach(function (s) { _origD[s.id] = depth[s.id]; });
       var changed = true;
       while (changed) {
         changed = false;
         steps.forEach(function (s) {
-          if (depth[s.id] === _origD[s.id]) return;
           outEdges(s).forEach(function (e) {
             if (byId[e.to] && !back[s.id + '>' + e.to] && depth[e.to] <= depth[s.id]) {
               depth[e.to] = depth[s.id] + 1; changed = true;
@@ -1757,24 +1754,6 @@ var MARK_DATA_URI = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABDgAAAM7CAYAA
     Object.keys(_foMap).forEach(function (k) {
       _foMap[k].forEach(function (g) { _foEdge[g.sid + '>' + g.tid] = k; });
     });
-    /* hasDirectPred: targets that receive a top-entry arrow from a depth-1
-       predecessor.  Skip-row (depth>=2) and fan-in arrows targeting these
-       nodes enter from the RIGHT side to avoid overlap. */
-    var hasDirectPred = {};
-    /* hasSameDepthPred: targets that receive a side arrow from a same-depth
-       predecessor (created by transitive reduction).  Depth-1 and skip-row
-       arrows targeting these nodes enter from the RIGHT side. */
-    var hasSameDepthPred = {};
-    steps.forEach(function (s) {
-      var a = pos[s.id]; if (!a) return;
-      outEdges(s).forEach(function (e) {
-        var b = pos[e.to]; if (!b) return;
-        if (!back[s.id + '>' + e.to]) {
-          if (b.depth === a.depth + 1) hasDirectPred[e.to] = true;
-          if (b.depth === a.depth) hasSameDepthPred[e.to] = true;
-        }
-      });
-    });
     steps.forEach(function (s) {
       var a = pos[s.id]; if (!a) return;
       var fwd = [], bk = [], side = [];
@@ -1824,12 +1803,6 @@ var MARK_DATA_URI = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABDgAAAM7CAYAA
               var sideY = a.y + a.h / 2;
               path = 'M' + sideX + ',' + sideY + ' L' + x2 + ',' + sideY + ' L' + x2 + ',' + y2;
               conns.push({ from: s.id, to: f.e.to, path: path, label: f.e.label, labelPos: { x: (sideX + x2) / 2, y: sideY - 8 }, back: false });
-            } else if (hasSameDepthPred[f.e.to]) {
-              var rEX = f.b.x + f.b.w, rEY = f.b.y + f.b.h / 2;
-              var appX = rEX + 18;
-              var gy1dp = a.y + a.h + ROW_GAP * 0.5;
-              path = 'M' + x1 + ',' + y1 + ' L' + x1 + ',' + gy1dp + ' L' + appX + ',' + gy1dp + ' L' + appX + ',' + rEY + ' L' + rEX + ',' + rEY;
-              conns.push({ from: s.id, to: f.e.to, path: path, label: f.e.label, labelPos: { x: appX + 6, y: (gy1dp + rEY) / 2 - 8 }, back: false });
             } else {
               path = 'M' + x1 + ',' + y1 + ' L' + x1 + ',' + busY + ' L' + x2 + ',' + busY + ' L' + x2 + ',' + y2;
               conns.push({ from: s.id, to: f.e.to, path: path, label: f.e.label, labelPos: { x: x2 + 8, y: busY + 11 }, back: false });
@@ -1838,7 +1811,7 @@ var MARK_DATA_URI = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABDgAAAM7CAYAA
         } else {
           var f = group[0], b = f.b, x2 = b.x + b.w / 2, y2 = b.y, path, lp;
           var fx1 = x1, fy1 = y1;
-          if (a.type === 'decision' && hasYesFwd && hasNoFwd && f.e.label === 'Yes') {
+          if (a.type === 'decision' && hasYesFwd && hasNoFwd && f.e.label === 'No') {
             fx1 = (x2 >= x1) ? a.x + a.w : a.x; fy1 = a.y + a.h / 2;
           }
           if (b.depth - a.depth >= 2) {
@@ -1853,7 +1826,7 @@ var MARK_DATA_URI = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABDgAAAM7CAYAA
             var skip = [s.id, f.e.to];
             var gy1 = a.y + a.h + ROW_GAP * 0.5;
             if (fx1 !== x1) {
-              /* Decision "Yes" exits from side vertex — route horizontally then down */
+              /* Decision "No" exits from side vertex — route horizontally then down */
               if (!vBlocked(x2, fy1, y2, skip) && !hBlocked(fy1, fx1, x2, skip)) {
                 path = 'M' + fx1 + ',' + fy1 + ' L' + x2 + ',' + fy1 + ' L' + x2 + ',' + y2;
                 conns.push({ from: s.id, to: f.e.to, path: path, label: f.e.label, labelPos: { x: (fx1 + x2) / 2, y: fy1 - 8 }, back: false });
@@ -1865,20 +1838,9 @@ var MARK_DATA_URI = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABDgAAAM7CAYAA
               }
             } else {
             var sideY = a.y + a.h / 2, sideX = (x2 > x1) ? a.x + a.w : a.x;
-            if (a.type === 'decision' && !hasDirectPred[f.e.to] && !hasSameDepthPred[f.e.to] && Math.abs(x2 - x1) > 4 && !vBlocked(x2, sideY, y2, skip) && !hBlocked(sideY, sideX, x2, skip)) {
+            if (a.type === 'decision' && Math.abs(x2 - x1) > 4 && !vBlocked(x2, sideY, y2, skip) && !hBlocked(sideY, sideX, x2, skip)) {
               path = 'M' + sideX + ',' + sideY + ' L' + x2 + ',' + sideY + ' L' + x2 + ',' + y2;
               conns.push({ from: s.id, to: f.e.to, path: path, label: f.e.label, labelPos: { x: (sideX + x2) / 2, y: sideY - 8 }, back: false });
-            } else if (hasDirectPred[f.e.to] || hasSameDepthPred[f.e.to]) {
-              var rEX = b.x + b.w, rEY = b.y + b.h / 2;
-              var appX = rEX + 18;
-              if (!vBlocked(appX, gy1, rEY, skip) && !hBlocked(gy1, x1, appX, skip)) {
-                path = 'M' + x1 + ',' + (a.y + a.h) + ' L' + x1 + ',' + gy1 + ' L' + appX + ',' + gy1 + ' L' + appX + ',' + rEY + ' L' + rEX + ',' + rEY;
-                conns.push({ from: s.id, to: f.e.to, path: path, label: f.e.label, labelPos: { x: appX + 6, y: (gy1 + rEY) / 2 - 8 }, back: false });
-              } else {
-                var channelX = channelXFor(a.depth, b.depth) + BACK_GAP + (backSeen++) * BACK_GAP;
-                path = 'M' + x1 + ',' + (a.y + a.h) + ' L' + x1 + ',' + gy1 + ' L' + channelX + ',' + gy1 + ' L' + channelX + ',' + rEY + ' L' + rEX + ',' + rEY;
-                conns.push({ from: s.id, to: f.e.to, path: path, label: f.e.label, labelPos: { x: channelX - 6, y: (gy1 + rEY) / 2 - 8 }, back: false });
-              }
             } else if (!vBlocked(x2, gy1, y2, skip) && !hBlocked(gy1, x1, x2, skip)) {
               path = 'M' + x1 + ',' + (a.y + a.h) + ' L' + x1 + ',' + gy1 + ' L' + x2 + ',' + gy1 + ' L' + x2 + ',' + y2;
               conns.push({ from: s.id, to: f.e.to, path: path, label: f.e.label, labelPos: { x: (x1 + x2) / 2, y: gy1 - 8 }, back: false });
@@ -1891,16 +1853,10 @@ var MARK_DATA_URI = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABDgAAAM7CAYAA
             }
           } else {
             if (fx1 !== x1) {
-              /* Decision "Yes" to next row: exit from side vertex */
+              /* Decision "No" to next row: exit from side vertex */
               var gyN = fy1 < y2 ? fy1 : a.y + a.h + ROW_GAP * 0.5;
               path = 'M' + fx1 + ',' + fy1 + ' L' + x2 + ',' + fy1 + ' L' + x2 + ',' + y2;
               lp = { x: (fx1 + x2) / 2, y: fy1 - 8 };
-            } else if (hasSameDepthPred[f.e.to]) {
-              var rEX = b.x + b.w, rEY = b.y + b.h / 2;
-              var appX = rEX + 18;
-              var gy1dp = a.y + a.h + ROW_GAP * 0.5;
-              path = 'M' + x1 + ',' + (a.y + a.h) + ' L' + x1 + ',' + gy1dp + ' L' + appX + ',' + gy1dp + ' L' + appX + ',' + rEY + ' L' + rEX + ',' + rEY;
-              lp = { x: appX + 6, y: (gy1dp + rEY) / 2 - 8 };
             } else if (fx1 === x2) {
               path = 'M' + fx1 + ',' + fy1 + ' L' + x2 + ',' + y2;
               lp = { x: fx1 + 10, y: (fy1 + y2) / 2 - 8 };
@@ -1984,23 +1940,15 @@ var MARK_DATA_URI = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABDgAAAM7CAYAA
       var skip = grp.map(function (g) { return g.sid; }).concat([grp[0].tid]);
       var depthDiff = b.depth - grp[0].a.depth;
       var avgSrcX = (minX + maxX) / 2;
-      var sideEntry = (depthDiff <= 2 && Math.abs(x2 - avgSrcX) > NODE_W) || hasDirectPred[grp[0].tid] || hasSameDepthPred[grp[0].tid];
+      var sideEntry = depthDiff <= 2 && Math.abs(x2 - avgSrcX) > NODE_W;
       if (sideEntry) {
-        var forceRight = hasDirectPred[grp[0].tid] || hasSameDepthPred[grp[0].tid];
-        var fromLeft = forceRight ? false : avgSrcX < x2;
+        var fromLeft = avgSrcX < x2;
         var entryX = fromLeft ? b.x : b.x + b.w;
         grp.forEach(function (g, idx) {
           var sx = g.a.x + g.a.w / 2, sy = g.a.y + g.a.h;
           var entryY = b.y + b.h * (idx + 1) / (grp.length + 1);
-          if (forceRight && sx < entryX) {
-            var appX = entryX + 18;
-            var dropY = g.a.y + g.a.h + ROW_GAP * 0.5;
-            var path = 'M' + sx + ',' + sy + ' L' + sx + ',' + dropY + ' L' + appX + ',' + dropY + ' L' + appX + ',' + entryY + ' L' + entryX + ',' + entryY;
-            conns.push({ from: g.sid, to: g.tid, path: path, label: g.label, labelPos: { x: appX + 6, y: (dropY + entryY) / 2 }, back: false });
-          } else {
-            var path = 'M' + sx + ',' + sy + ' L' + sx + ',' + entryY + ' L' + entryX + ',' + entryY;
-            conns.push({ from: g.sid, to: g.tid, path: path, label: g.label, labelPos: { x: sx + 8, y: (sy + entryY) / 2 }, back: false });
-          }
+          var path = 'M' + sx + ',' + sy + ' L' + sx + ',' + entryY + ' L' + entryX + ',' + entryY;
+          conns.push({ from: g.sid, to: g.tid, path: path, label: g.label, labelPos: { x: sx + 8, y: (sy + entryY) / 2 }, back: false });
         });
       } else {
         var trunkX = x2;
