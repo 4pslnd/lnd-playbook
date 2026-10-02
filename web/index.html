@@ -1757,21 +1757,16 @@ var MARK_DATA_URI = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABDgAAAM7CAYAA
     Object.keys(_foMap).forEach(function (k) {
       _foMap[k].forEach(function (g) { _foEdge[g.sid + '>' + g.tid] = k; });
     });
-    /* hasDirectPred: targets that receive a top-entry arrow from a depth-1
-       predecessor.  Skip-row (depth>=2) and fan-in arrows targeting these
-       nodes enter from the RIGHT side to avoid overlap. */
+    /* hasDirectPred: targets that already receive a nearby arrow (depth-1 or
+       same-depth via transitive reduction).  Skip-row and fan-in arrows
+       targeting these nodes enter from the RIGHT side to avoid overlap. */
     var hasDirectPred = {};
-    /* hasSameDepthPred: targets that receive a side arrow from a same-depth
-       predecessor (created by transitive reduction).  Depth-1 and skip-row
-       arrows targeting these nodes enter from the RIGHT side. */
-    var hasSameDepthPred = {};
     steps.forEach(function (s) {
       var a = pos[s.id]; if (!a) return;
       outEdges(s).forEach(function (e) {
         var b = pos[e.to]; if (!b) return;
-        if (!back[s.id + '>' + e.to]) {
-          if (b.depth === a.depth + 1) hasDirectPred[e.to] = true;
-          if (b.depth === a.depth) hasSameDepthPred[e.to] = true;
+        if (b.depth - a.depth <= 1 && b.depth >= a.depth && !back[s.id + '>' + e.to]) {
+          hasDirectPred[e.to] = true;
         }
       });
     });
@@ -1824,7 +1819,7 @@ var MARK_DATA_URI = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABDgAAAM7CAYAA
               var sideY = a.y + a.h / 2;
               path = 'M' + sideX + ',' + sideY + ' L' + x2 + ',' + sideY + ' L' + x2 + ',' + y2;
               conns.push({ from: s.id, to: f.e.to, path: path, label: f.e.label, labelPos: { x: (sideX + x2) / 2, y: sideY - 8 }, back: false });
-            } else if (hasSameDepthPred[f.e.to]) {
+            } else if (hasDirectPred[f.e.to]) {
               var rEX = f.b.x + f.b.w, rEY = f.b.y + f.b.h / 2;
               var appX = rEX + 18;
               var gy1dp = a.y + a.h + ROW_GAP * 0.5;
@@ -1865,10 +1860,10 @@ var MARK_DATA_URI = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABDgAAAM7CAYAA
               }
             } else {
             var sideY = a.y + a.h / 2, sideX = (x2 > x1) ? a.x + a.w : a.x;
-            if (a.type === 'decision' && !hasDirectPred[f.e.to] && !hasSameDepthPred[f.e.to] && Math.abs(x2 - x1) > 4 && !vBlocked(x2, sideY, y2, skip) && !hBlocked(sideY, sideX, x2, skip)) {
+            if (a.type === 'decision' && !hasDirectPred[f.e.to] && Math.abs(x2 - x1) > 4 && !vBlocked(x2, sideY, y2, skip) && !hBlocked(sideY, sideX, x2, skip)) {
               path = 'M' + sideX + ',' + sideY + ' L' + x2 + ',' + sideY + ' L' + x2 + ',' + y2;
               conns.push({ from: s.id, to: f.e.to, path: path, label: f.e.label, labelPos: { x: (sideX + x2) / 2, y: sideY - 8 }, back: false });
-            } else if (hasDirectPred[f.e.to] || hasSameDepthPred[f.e.to]) {
+            } else if (hasDirectPred[f.e.to]) {
               var rEX = b.x + b.w, rEY = b.y + b.h / 2;
               var appX = rEX + 18;
               if (!vBlocked(appX, gy1, rEY, skip) && !hBlocked(gy1, x1, appX, skip)) {
@@ -1895,7 +1890,7 @@ var MARK_DATA_URI = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABDgAAAM7CAYAA
               var gyN = fy1 < y2 ? fy1 : a.y + a.h + ROW_GAP * 0.5;
               path = 'M' + fx1 + ',' + fy1 + ' L' + x2 + ',' + fy1 + ' L' + x2 + ',' + y2;
               lp = { x: (fx1 + x2) / 2, y: fy1 - 8 };
-            } else if (hasSameDepthPred[f.e.to]) {
+            } else if (hasDirectPred[f.e.to]) {
               var rEX = b.x + b.w, rEY = b.y + b.h / 2;
               var appX = rEX + 18;
               var gy1dp = a.y + a.h + ROW_GAP * 0.5;
@@ -1984,9 +1979,9 @@ var MARK_DATA_URI = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABDgAAAM7CAYAA
       var skip = grp.map(function (g) { return g.sid; }).concat([grp[0].tid]);
       var depthDiff = b.depth - grp[0].a.depth;
       var avgSrcX = (minX + maxX) / 2;
-      var sideEntry = (depthDiff <= 2 && Math.abs(x2 - avgSrcX) > NODE_W) || hasDirectPred[grp[0].tid] || hasSameDepthPred[grp[0].tid];
+      var sideEntry = (depthDiff <= 2 && Math.abs(x2 - avgSrcX) > NODE_W) || hasDirectPred[grp[0].tid];
       if (sideEntry) {
-        var forceRight = hasDirectPred[grp[0].tid] || hasSameDepthPred[grp[0].tid];
+        var forceRight = hasDirectPred[grp[0].tid];
         var fromLeft = forceRight ? false : avgSrcX < x2;
         var entryX = fromLeft ? b.x : b.x + b.w;
         grp.forEach(function (g, idx) {
