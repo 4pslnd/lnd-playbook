@@ -866,9 +866,20 @@ img{ max-width: 100%; display:block; }
 .mk-btn:disabled{opacity:.4;cursor:not-allowed}
 .hb-approve{border-color:var(--olive);color:var(--olive-ink)}
 .hb-approve:hover{background:var(--olive-fill)}
-.mk-bar{display:flex;align-items:center;gap:9px;padding:10px 18px;background:var(--lane-bg);border-bottom:1px solid var(--hairline);flex-wrap:wrap}
+.mk-bar{display:flex;align-items:center;gap:9px;padding:10px 18px;background:var(--lane-bg);border-bottom:1px solid var(--hairline);flex-wrap:nowrap}
+.mk-bar-left{display:flex;align-items:center;gap:9px;flex:1;min-width:0;overflow:hidden}
+.mk-bar-left>*{flex-shrink:0}
+.mk-bar-left>#procBarTitle{flex-shrink:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mk-bar-right{display:flex;align-items:center;gap:7px;flex-shrink:0;margin-left:auto;padding-left:12px;border-left:1px solid var(--hairline)}
 .mk-bar select{width:auto}
 .mk-bar label.mk-hint{display:flex;align-items:center;gap:5px}
+.send-btn{display:inline-flex;align-items:center;gap:0;border-radius:var(--radius-sm);overflow:hidden;flex-shrink:0}
+.send-btn__label{padding:8px 8px 8px 12px;background:var(--indigo-2);color:#fff;font-family:var(--font-body);font-size:12.5px;font-weight:700;white-space:nowrap;border:1px solid var(--indigo-2);border-right:none;border-radius:var(--radius-sm) 0 0 var(--radius-sm);cursor:pointer}
+.send-btn__select{padding:8px 22px 8px 8px;background:var(--indigo-1);color:#fff;font-family:var(--font-body);font-size:12.5px;font-weight:700;border:1px solid var(--indigo-2);border-left:1px solid rgba(255,255,255,.25);border-radius:0 var(--radius-sm) var(--radius-sm) 0;cursor:pointer;-webkit-appearance:none;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='white'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 6px center}
+.send-btn[disabled]{opacity:.4;cursor:not-allowed}
+.send-btn[disabled] .send-btn__label,.send-btn[disabled] .send-btn__select{cursor:not-allowed}
+.draft-view-banner{display:flex;align-items:center;gap:8px;padding:8px 18px;font-size:12.5px;font-weight:600;background:#fdf8ec;color:#856404;border-bottom:1px solid #e8d6a0}
+.draft-view-banner a{color:var(--indigo-2);text-decoration:underline;cursor:pointer;font-weight:600}
 .mk-h2{font-family:var(--font-body);font-weight:700;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-faint);margin:0 0 10px}
 input,select,textarea{font-family:var(--font-body);font-size:13.5px;color:var(--ink);width:100%;padding:8px 10px;border:1px solid var(--hairline-strong);border-radius:var(--radius-sm);background:var(--paper-raised)}
 textarea{resize:vertical;min-height:60px;line-height:1.5}
@@ -1222,24 +1233,28 @@ textarea{resize:vertical;min-height:60px;line-height:1.5}
 
 <div id="procEditor" hidden>
   <div class="mk-bar">
-    <button class="mk-btn" id="backToView">&larr; Back</button>
-    <span id="procBarTitle" style="font-weight:700"></span>
-    <span id="editFlowBar" class="mk-editflow" style="display:inline-flex;gap:6px;align-items:center"></span>
-    <label class="mk-hint">Type <select id="pkind" aria-label="Process or alignment">
+    <div class="mk-bar-left">
+      <button class="mk-btn" id="backToView">&larr; Back</button>
+      <span id="procBarTitle" style="font-weight:700"></span>
+      <span id="editFlowBar" class="mk-editflow" style="display:inline-flex;gap:6px;align-items:center"></span>
+      <label class="mk-hint">PIC <select id="ppic" aria-label="Person in charge"></select></label>
+      <label class="mk-hint" id="pworkunitWrap" hidden>Effort unit <select id="pworkunit" aria-label="Effort unit"><option value="day">Days</option><option value="week">Weeks</option><option value="hour">Hours</option></select></label>
+      <label class="mk-hint" id="pcountryWrap" hidden>Country <select id="pcountry" aria-label="Country"></select></label>
+      <label class="mk-hint" id="pbuWrap" hidden>Business unit <select id="pbu" aria-label="Business unit"></select></label>
+    </div>
+    <div class="mk-bar-right">
+      <button class="mk-btn" id="recallBtn" hidden title="Pull it back to Draft">↩ Recall</button>
+      <button class="mk-btn" id="archiveBtn" hidden title="Move to Archived (hidden from viewers)">Archive</button>
+      <button class="mk-btn" id="adminPubBtn" hidden title="Publish directly, without review (admin)">Publish now</button>
+      <button class="mk-btn" id="discard">Discard</button>
+      <span class="send-btn" id="sendApprovalBtn" hidden><span class="send-btn__label">→ Send to</span><select class="send-btn__select" id="sendApprovalSel"></select></span>
+      <button class="mk-btn mk-btn--primary" id="pub" disabled>Save draft</button>
+    </div>
+    <label class="mk-hint" style="display:none">Type <select id="pkind" aria-label="Process or alignment">
       <option value="process">Process</option><option value="alignment">Alignment</option></select></label>
     <label class="mk-hint" style="display:none">Status <select id="pstatus" aria-label="Status"></select></label>
-    <span class="mk-hint">Status <span id="pstatusPill" class="mk-status-pill mk-status-pill--draft">Draft</span></span>
-    <label class="mk-hint">PIC <select id="ppic" aria-label="Person in charge"></select></label>
-    <label class="mk-hint" id="pcountryWrap" hidden>Country <select id="pcountry" aria-label="Country"></select></label>
-    <label class="mk-hint" id="pbuWrap" hidden>Business unit <select id="pbu" aria-label="Business unit"></select></label>
-    <label class="mk-hint">Reviewer <select id="previewer" aria-label="Reviewer"></select></label>
-    <label class="mk-hint" id="pworkunitWrap" hidden>Effort unit <select id="pworkunit" aria-label="Effort unit"><option value="day">Days</option><option value="week">Weeks</option><option value="hour">Hours</option></select></label>
-    <div class="mk-grow"></div>
-    <button class="mk-btn" id="recallBtn" hidden title="Pull it back to Draft">↩ Recall</button>
-    <button class="mk-btn" id="archiveBtn" hidden title="Move to Archived (hidden from viewers)">Archive</button>
-    <button class="mk-btn" id="adminPubBtn" hidden title="Publish directly, without review (admin)">Publish now</button>
-    <button class="mk-btn" id="discard">Discard</button>
-    <button class="mk-btn mk-btn--primary" id="pub" disabled>Publish</button>
+    <span class="mk-hint" style="display:none">Status <span id="pstatusPill" class="mk-status-pill mk-status-pill--draft">Draft</span></span>
+    <label class="mk-hint" style="display:none">Reviewer <select id="previewer" aria-label="Reviewer"></select></label>
   </div>
 
   <div id="editorProcess">
@@ -3007,7 +3022,6 @@ function editorState() {
   var live = !!P._live;
   if (P.review === 'pending') return { label: 'Waiting for ' + (P.reviewer ? nameFromEmail(P.reviewer) : 'review') + '…', disabled: true, mode: 'pending' };
   if (P.review === 'approved') return { label: live ? 'Publish update' : 'Publish', disabled: invalid, mode: invalid ? 'invalid' : 'publish' };
-  if (P.reviewer) return { label: '→ Send ' + (live ? 'update ' : '') + 'for approval', disabled: invalid, mode: invalid ? 'invalid' : 'send' };
   return { label: 'Save draft', disabled: !dirty, mode: 'save' };
 }
 /* The status pill reflects the true state, including the "live + a revision in
@@ -3023,14 +3037,27 @@ function statusPillInfo() {
 function updatePublishButton() {
   var b = $('pub'); if (!b || !P) return;
   var st = editorState();
-  b.textContent = st.label; b.disabled = !!st.disabled; b.setAttribute('data-mode', st.mode || 'save');
+  b.disabled = !!st.disabled; b.setAttribute('data-mode', st.mode || 'save');
+  b.textContent = st.label || 'Save draft';
+  b.className = 'mk-btn mk-btn--primary';
   var pill = $('pstatusPill'); if (pill) { var pi = statusPillInfo(); pill.className = 'mk-status-pill mk-status-pill--' + pi.cls; pill.textContent = pi.text; }
   var invalid = kindOf(P) === 'process' && validate().length > 0;
   var rc = $('recallBtn'); if (rc) rc.hidden = !(P.review === 'pending');
   var ar = $('archiveBtn'); if (ar) ar.hidden = !(P._live && P.status !== 'archived' && P.review !== 'pending');
   var ap = $('adminPubBtn'); if (ap) {
     ap.hidden = !(isAdmin() && P.status !== 'archived' && P.review !== 'pending' && P.review !== 'approved');
-    ap.disabled = invalid; ap.textContent = P._live ? 'Publish now' : 'Publish now';
+    var noChanges = P._live && !dirty && !P._pendingUpdate;
+    ap.disabled = invalid || noChanges;
+    ap.title = noChanges ? 'No changes to publish' : 'Publish directly, without review (admin)';
+  }
+  var sa = $('sendApprovalBtn');
+  if (sa) {
+    sa.hidden = (P.status === 'archived' || P.review === 'pending' || P.review === 'approved');
+    if (!sa.hidden) {
+      var saDisabled = invalid || !dirty;
+      sa.style.opacity = saDisabled ? '.4' : '1';
+      sa.style.pointerEvents = saDisabled ? 'none' : '';
+    }
   }
 }
 function defNote() {
@@ -3067,7 +3094,8 @@ function doSaveDraft() {
 function doSendForApproval() {
   if (kindOf(P) === 'process') { var e = validate(); if (e.length) { Modal.alert('Fix these before sending', e.map(esc).join('<br>')); return; } }
   var pr = P.review, prc = P.reviewComment; P.review = 'pending'; P.updatedAt = todayISO(); P.updatedBy = currentUser.email; delete P.reviewComment;
-  $('pub').disabled = true; $('pub').textContent = 'Sending…';
+  var saB = $('sendApprovalBtn'); if (saB) { saB.style.opacity = '.4'; saB.style.pointerEvents = 'none'; }
+  $('pub').disabled = true;
   persist('Sent for approval: ' + P.title, function (ok, r) {
     if (!ok) { P.review = pr; P.reviewComment = prc; updatePublishButton(); Modal.alert('Could not send', errText(r)); return; }
     dirty = false; clearAutosave(P.process_id); pushHistory(P, 'Sent for approval'); addNotif('pending', P); notifyServer('Submitted for approval', P); sendApprovalEmail();
@@ -4045,7 +4073,13 @@ function heroFor(p, flowLabelHtml) {
   } else if (p.review === 'approved' && p.status !== 'live') {
     reviewChip = '<span class="rev-chip rev-chip--approved">Approved — ready to publish</span>';
   }
-  return '<section class="proc-hero"><div class="proc-hero__top">' +
+  var draftBanner = '';
+  if (edit && p._pendingUpdate) {
+    draftBanner = '<div class="draft-view-banner"><span>⚠</span><span>You are viewing the <b>unpublished draft</b>. Viewers see the last published version.</span><span class="mk-grow"></span><a id="viewPublishedLink">View published version</a></div>';
+  } else if (edit && p.status === 'draft') {
+    draftBanner = '<div class="draft-view-banner"><span>⚠</span><span>This is a <b>draft</b> — not yet published. Only editors can see it.</span></div>';
+  }
+  return draftBanner + '<section class="proc-hero"><div class="proc-hero__top">' +
     '<span class="mk-status-pill mk-status-pill--' + p.status + '">' + p.status + '</span>' +
     '<span class="kind-tag kind-tag--' + kind + '">' + KIND_LABEL[kind] + '</span>' + reviewChip +
     '<div class="mk-grow"></div>' + approveBtns + pdfBtn + moveBtn + histBtn + delBtn + editBtn + '</div>' +
@@ -4084,6 +4118,15 @@ function wireItemHeader(p) {
         if (!ok) { delete p._publish; p.review = pr; p.updatedAt = pu; p.updatedBy = pb; p.reviewComment = prc; Modal.alert('Publish failed', errText(r)); return; }
         pushHistory(p, 'Approved & published'); addNotif('published', p); notifyServer('Approved & published', p); notifyPublish(p);
         Modal.alert('Published', '"' + esc(p.title) + '" is now live.'); render(); }); }, { okLabel: 'Approve & publish' }); };
+  var vpl = $('viewPublishedLink'); if (vpl) vpl.onclick = function (ev) {
+    ev.preventDefault();
+    var pub = PUBLISHED[p.process_id];
+    if (!pub) { Modal.alert('No published version', 'This process has never been published.'); return; }
+    var tmp = JSON.parse(JSON.stringify(pub));
+    tmp.process_id = p.process_id; tmp.pillar = p.pillar; tmp.status = p.status;
+    tmp._pendingUpdate = false; tmp._live = p._live;
+    if (kindOf(p) === 'process') drawProcess(tmp); else drawAlignment(tmp);
+  };
   var rq = $('reqChangesBtn'); if (rq) rq.onclick = function () {
     askReviewComment(function (html, text) {
       if (!text) { Modal.alert('Add a comment', 'Please write what needs changing so the author knows.'); return; }
@@ -4465,6 +4508,12 @@ function drawEditorBar() {
   if (P.reviewer && !reviewers.some(function (m) { return m.email === P.reviewer; })) { var ex = memberByEmail(P.reviewer); if (ex) reviewers = reviewers.concat([ex]); }
   revSel.innerHTML = roleGroupedOptions(reviewers, P.reviewer, true) +
     (P.reviewer && !memberByEmail(P.reviewer) ? '<option value="' + esc(P.reviewer) + '" selected>' + esc(P.reviewer) + ' (removed)</option>' : '');
+  var saSel = $('sendApprovalSel');
+  if (saSel) {
+    saSel.innerHTML = reviewers.filter(function (m) { return m.email !== currentUser.email; }).map(function (m) {
+      return '<option value="' + esc(m.email) + '"' + (P.reviewer === m.email ? ' selected' : '') + '>' + esc(m.name || m.email) + '</option>';
+    }).join('');
+  }
   /* Career Pathway: show Country + Business unit pickers (stored on the doc). */
   var isCareer = P.pillar === CAREER_KEY;
   var cw = $('pcountryWrap'), bw = $('pbuWrap');
@@ -5226,13 +5275,20 @@ function wireEditorChrome() {
     var mode = $('pub').getAttribute('data-mode');
     if (mode === 'pending' || mode === 'invalid') return;
     if (mode === 'restore') return doRestore();
-    if (mode === 'send') return doSendForApproval();
     if (mode === 'publish') return doPublish(false);
     doSaveDraft();
   };
   var rcB = $('recallBtn'); if (rcB) rcB.onclick = function () { doRecall(); };
   var arB = $('archiveBtn'); if (arB) arB.onclick = function () { doArchive(); };
   var apB = $('adminPubBtn'); if (apB) apB.onclick = function () { doPublish(true); };
+  var saBtn = $('sendApprovalBtn'); if (saBtn) {
+    saBtn.onclick = function () {
+      var sel = $('sendApprovalSel');
+      if (!sel || !sel.value) return;
+      P.reviewer = sel.value;
+      doSendForApproval();
+    };
+  }
 }
 document.addEventListener('keydown', function (e) {
   if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
