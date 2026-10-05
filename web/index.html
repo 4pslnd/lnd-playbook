@@ -873,11 +873,15 @@ img{ max-width: 100%; display:block; }
 .mk-bar-right{display:flex;align-items:center;gap:7px;flex-shrink:0;margin-left:auto;padding-left:12px;border-left:1px solid var(--hairline)}
 .mk-bar select{width:auto}
 .mk-bar label.mk-hint{display:flex;align-items:center;gap:5px}
-.send-btn{display:inline-flex;align-items:center;gap:0;border-radius:var(--radius-sm);overflow:hidden;flex-shrink:0}
-.send-btn__label{padding:8px 8px 8px 12px;background:var(--indigo-2);color:#fff;font-family:var(--font-body);font-size:12.5px;font-weight:700;white-space:nowrap;border:1px solid var(--indigo-2);border-right:none;border-radius:var(--radius-sm) 0 0 var(--radius-sm);cursor:pointer}
-.send-btn__select{padding:8px 22px 8px 8px;background:var(--indigo-1);color:#fff;font-family:var(--font-body);font-size:12.5px;font-weight:700;border:1px solid var(--indigo-2);border-left:1px solid rgba(255,255,255,.25);border-radius:0 var(--radius-sm) var(--radius-sm) 0;cursor:pointer;-webkit-appearance:none;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='white'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 6px center}
+.send-btn{background:var(--indigo-2);color:#fff;font-weight:700;flex-shrink:0}
+.send-btn:hover:not([disabled]){background:var(--indigo-1)}
 .send-btn[disabled]{opacity:.4;cursor:not-allowed}
-.send-btn[disabled] .send-btn__label,.send-btn[disabled] .send-btn__select{cursor:not-allowed}
+.reviewer-pick{list-style:none;margin:0;padding:0}
+.reviewer-pick li{padding:10px 16px;cursor:pointer;border-bottom:1px solid var(--hairline);display:flex;align-items:center;gap:10px}
+.reviewer-pick li:last-child{border-bottom:none}
+.reviewer-pick li:hover{background:var(--lane-bg)}
+.reviewer-pick__name{font-weight:600;font-size:14px}
+.reviewer-pick__role{font-size:12px;color:#888}
 .draft-view-banner{display:flex;align-items:center;gap:8px;padding:8px 18px;font-size:12.5px;font-weight:600;background:#fdf8ec;color:#856404;border-bottom:1px solid #e8d6a0}
 .draft-view-banner a{color:var(--indigo-2);text-decoration:underline;cursor:pointer;font-weight:600}
 .mk-h2{font-family:var(--font-body);font-weight:700;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-faint);margin:0 0 10px}
@@ -1247,7 +1251,7 @@ textarea{resize:vertical;min-height:60px;line-height:1.5}
       <button class="mk-btn" id="archiveBtn" hidden title="Move to Archived (hidden from viewers)">Archive</button>
       <button class="mk-btn" id="adminPubBtn" hidden title="Publish directly, without review (admin)">Publish now</button>
       <button class="mk-btn" id="discard">Discard</button>
-      <span class="send-btn" id="sendApprovalBtn" hidden><span class="send-btn__label">→ Send to</span><select class="send-btn__select" id="sendApprovalSel"></select></span>
+      <button class="mk-btn send-btn" id="sendApprovalBtn" hidden>→ Send for approval</button>
       <button class="mk-btn mk-btn--primary" id="pub" disabled>Save draft</button>
     </div>
     <label class="mk-hint" style="display:none">Type <select id="pkind" aria-label="Process or alignment">
@@ -4508,12 +4512,6 @@ function drawEditorBar() {
   if (P.reviewer && !reviewers.some(function (m) { return m.email === P.reviewer; })) { var ex = memberByEmail(P.reviewer); if (ex) reviewers = reviewers.concat([ex]); }
   revSel.innerHTML = roleGroupedOptions(reviewers, P.reviewer, true) +
     (P.reviewer && !memberByEmail(P.reviewer) ? '<option value="' + esc(P.reviewer) + '" selected>' + esc(P.reviewer) + ' (removed)</option>' : '');
-  var saSel = $('sendApprovalSel');
-  if (saSel) {
-    saSel.innerHTML = reviewers.filter(function (m) { return m.email !== currentUser.email; }).map(function (m) {
-      return '<option value="' + esc(m.email) + '"' + (P.reviewer === m.email ? ' selected' : '') + '>' + esc(m.name || m.email) + '</option>';
-    }).join('');
-  }
   /* Career Pathway: show Country + Business unit pickers (stored on the doc). */
   var isCareer = P.pillar === CAREER_KEY;
   var cw = $('pcountryWrap'), bw = $('pbuWrap');
@@ -5283,10 +5281,23 @@ function wireEditorChrome() {
   var apB = $('adminPubBtn'); if (apB) apB.onclick = function () { doPublish(true); };
   var saBtn = $('sendApprovalBtn'); if (saBtn) {
     saBtn.onclick = function () {
-      var sel = $('sendApprovalSel');
-      if (!sel || !sel.value) return;
-      P.reviewer = sel.value;
-      doSendForApproval();
+      if (!P) return;
+      var candidates = MEMBERS.filter(function (m) {
+        return m.email !== currentUser.email && accessLevelFor(m, P) === 'edit';
+      });
+      if (!candidates.length) { Modal.alert('No reviewers', 'No other members have edit access to this pillar.'); return; }
+      var body = '<p style="margin:0 0 10px;font-size:13px;color:#666">Select a reviewer to send for approval:</p><ul class="reviewer-pick">' +
+        candidates.map(function (m) {
+          return '<li data-email="' + esc(m.email) + '"><span class="reviewer-pick__name">' + esc(m.name || m.email) + '</span><span class="reviewer-pick__role">' + esc(m.role || '') + '</span></li>';
+        }).join('') + '</ul>';
+      var h = Modal.custom('Send for approval', body, [{ label: 'Cancel', onClick: function () { Modal.close(); } }]);
+      h.querySelectorAll('.reviewer-pick li').forEach(function (li) {
+        li.onclick = function () {
+          P.reviewer = li.getAttribute('data-email');
+          Modal.close();
+          doSendForApproval();
+        };
+      });
     };
   }
 }
