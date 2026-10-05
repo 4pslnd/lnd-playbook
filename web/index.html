@@ -4131,7 +4131,7 @@ function wireItemHeader(p) {
   var vpl = $('viewPublishedLink'); if (vpl) vpl.onclick = function (ev) {
     ev.preventDefault();
     try {
-      var pub = PUBLISHED[p.process_id];
+      var pub = window._PUBLISHED[p.process_id];
       if (!pub) { Modal.alert('No published version', 'This process has never been published.'); return; }
       var tmp = JSON.parse(JSON.stringify(p));
       var pubData = JSON.parse(JSON.stringify(pub));
@@ -5585,7 +5585,7 @@ if (typeof GAS_MODE === 'undefined' || !GAS_MODE) bootApp();
 
 <script>
 (function(){
-  var SB=null,MYEMAIL='',ME=null,PUBLISHED={},ORIG={},DOCID={};
+  var SB=null,MYEMAIL='',ME=null,PUBLISHED=window._PUBLISHED={},ORIG={},DOCID={};
   var $=function(id){return document.getElementById(id);};
   function statusOf(r){return r.archived?'archived':(r.published?'live':'draft');}
   function cleanSteps(arr){return (arr||[]).map(function(st){var o={};for(var kk in st){if(kk.charAt(0)!=='_')o[kk]=st[kk];}return o;});}
