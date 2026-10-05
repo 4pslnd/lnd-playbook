@@ -4078,7 +4078,9 @@ function heroFor(p, flowLabelHtml) {
     reviewChip = '<span class="rev-chip rev-chip--approved">Approved — ready to publish</span>';
   }
   var draftBanner = '';
-  if (edit && p._pendingUpdate) {
+  if (p._viewingPublished) {
+    draftBanner = '<div class="draft-view-banner" style="background:#e8f4e8;color:#2d5a2d;border-color:#b8d8b8"><span>✓</span><span>You are viewing the <b>published version</b> (what viewers see).</span><span class="mk-grow"></span><a id="backToDraftLink">Back to draft</a></div>';
+  } else if (edit && p._pendingUpdate) {
     draftBanner = '<div class="draft-view-banner"><span>⚠</span><span>You are viewing the <b>unpublished draft</b>. Viewers see the last published version.</span><span class="mk-grow"></span><a id="viewPublishedLink">View published version</a></div>';
   } else if (edit && p.status === 'draft') {
     draftBanner = '<div class="draft-view-banner"><span>⚠</span><span>This is a <b>draft</b> — not yet published. Only editors can see it.</span></div>';
@@ -4122,13 +4124,20 @@ function wireItemHeader(p) {
         if (!ok) { delete p._publish; p.review = pr; p.updatedAt = pu; p.updatedBy = pb; p.reviewComment = prc; Modal.alert('Publish failed', errText(r)); return; }
         pushHistory(p, 'Approved & published'); addNotif('published', p); notifyServer('Approved & published', p); notifyPublish(p);
         Modal.alert('Published', '"' + esc(p.title) + '" is now live.'); render(); }); }, { okLabel: 'Approve & publish' }); };
+  var bdl = $('backToDraftLink'); if (bdl) bdl.onclick = function (ev) {
+    ev.preventDefault();
+    drawItem();
+  };
   var vpl = $('viewPublishedLink'); if (vpl) vpl.onclick = function (ev) {
     ev.preventDefault();
     var pub = PUBLISHED[p.process_id];
     if (!pub) { Modal.alert('No published version', 'This process has never been published.'); return; }
-    var tmp = JSON.parse(JSON.stringify(pub));
-    tmp.process_id = p.process_id; tmp.pillar = p.pillar; tmp.status = p.status;
-    tmp._pendingUpdate = false; tmp._live = p._live;
+    var tmp = JSON.parse(JSON.stringify(p));
+    var pubData = JSON.parse(JSON.stringify(pub));
+    for (var k in pubData) { if (pubData.hasOwnProperty(k)) tmp[k] = pubData[k]; }
+    tmp.process_id = p.process_id; tmp.kind = p.kind; tmp.pillar = p.pillar;
+    tmp.status = p.status; tmp._pendingUpdate = false; tmp._live = p._live;
+    tmp._viewingPublished = true;
     if (kindOf(p) === 'process') drawProcess(tmp); else drawAlignment(tmp);
   };
   var rq = $('reqChangesBtn'); if (rq) rq.onclick = function () {
