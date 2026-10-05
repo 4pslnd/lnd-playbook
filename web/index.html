@@ -883,7 +883,7 @@ img{ max-width: 100%; display:block; }
 .reviewer-pick__name{font-weight:600;font-size:14px}
 .reviewer-pick__role{font-size:12px;color:#888}
 .draft-view-banner{display:flex;align-items:center;gap:8px;padding:8px 18px;font-size:12.5px;font-weight:600;background:#fdf8ec;color:#856404;border-bottom:1px solid #e8d6a0}
-.draft-view-banner a{color:var(--indigo-2);text-decoration:underline;cursor:pointer;font-weight:600}
+.draft-view-banner a,.draft-view-banner__btn{color:var(--indigo-2);text-decoration:underline;cursor:pointer;font-weight:600;background:none;border:none;padding:0;font-size:inherit;font-family:inherit}
 .mk-h2{font-family:var(--font-body);font-weight:700;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-faint);margin:0 0 10px}
 input,select,textarea{font-family:var(--font-body);font-size:13.5px;color:var(--ink);width:100%;padding:8px 10px;border:1px solid var(--hairline-strong);border-radius:var(--radius-sm);background:var(--paper-raised)}
 textarea{resize:vertical;min-height:60px;line-height:1.5}
@@ -4079,9 +4079,9 @@ function heroFor(p, flowLabelHtml) {
   }
   var draftBanner = '';
   if (p._viewingPublished) {
-    draftBanner = '<div class="draft-view-banner" style="background:#e8f4e8;color:#2d5a2d;border-color:#b8d8b8"><span>✓</span><span>You are viewing the <b>published version</b> (what viewers see).</span><span class="mk-grow"></span><a id="backToDraftLink">Back to draft</a></div>';
+    draftBanner = '<div class="draft-view-banner" style="background:#e8f4e8;color:#2d5a2d;border-color:#b8d8b8"><span>✓</span><span>You are viewing the <b>published version</b> (what viewers see).</span><span class="mk-grow"></span><button type="button" class="draft-view-banner__btn" id="backToDraftLink">Back to draft</button></div>';
   } else if (edit && p._pendingUpdate) {
-    draftBanner = '<div class="draft-view-banner"><span>⚠</span><span>You are viewing the <b>unpublished draft</b>. Viewers see the last published version.</span><span class="mk-grow"></span><a id="viewPublishedLink">View published version</a></div>';
+    draftBanner = '<div class="draft-view-banner"><span>⚠</span><span>You are viewing the <b>unpublished draft</b>. Viewers see the last published version.</span><span class="mk-grow"></span><button type="button" class="draft-view-banner__btn" id="viewPublishedLink">View published version</button></div>';
   } else if (edit && p.status === 'draft') {
     draftBanner = '<div class="draft-view-banner"><span>⚠</span><span>This is a <b>draft</b> — not yet published. Only editors can see it.</span></div>';
   }
@@ -4130,15 +4130,17 @@ function wireItemHeader(p) {
   };
   var vpl = $('viewPublishedLink'); if (vpl) vpl.onclick = function (ev) {
     ev.preventDefault();
-    var pub = PUBLISHED[p.process_id];
-    if (!pub) { Modal.alert('No published version', 'This process has never been published.'); return; }
-    var tmp = JSON.parse(JSON.stringify(p));
-    var pubData = JSON.parse(JSON.stringify(pub));
-    for (var k in pubData) { if (pubData.hasOwnProperty(k)) tmp[k] = pubData[k]; }
-    tmp.process_id = p.process_id; tmp.kind = p.kind; tmp.pillar = p.pillar;
-    tmp.status = p.status; tmp._pendingUpdate = false; tmp._live = p._live;
-    tmp._viewingPublished = true;
-    if (kindOf(p) === 'process') drawProcess(tmp); else drawAlignment(tmp);
+    try {
+      var pub = PUBLISHED[p.process_id];
+      if (!pub) { Modal.alert('No published version', 'This process has never been published.'); return; }
+      var tmp = JSON.parse(JSON.stringify(p));
+      var pubData = JSON.parse(JSON.stringify(pub));
+      for (var k in pubData) { if (pubData.hasOwnProperty(k)) tmp[k] = pubData[k]; }
+      tmp.process_id = p.process_id; tmp.kind = p.kind; tmp.pillar = p.pillar;
+      tmp.status = p.status; tmp._pendingUpdate = false; tmp._live = p._live;
+      tmp._viewingPublished = true;
+      if (kindOf(p) === 'process') drawProcess(tmp); else drawAlignment(tmp);
+    } catch (err) { Modal.alert('Error', 'Could not load published version: ' + err.message); }
   };
   var rq = $('reqChangesBtn'); if (rq) rq.onclick = function () {
     askReviewComment(function (html, text) {
