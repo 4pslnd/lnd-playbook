@@ -1824,7 +1824,7 @@ var MARK_DATA_URI = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABDgAAAM7CAYAA
       var a = pos[s.id]; if (!a) return;
       outEdges(s).forEach(function (e) {
         var b = pos[e.to]; if (!b) return;
-        if (b.depth > a.depth && !back[s.id + '>' + e.to]) {
+        if (b.depth > a.depth && !back[s.id + '>' + e.to] && a.lane !== b.lane) {
           var k = e.to + '|' + a.depth;
           if (!_fiMap[k]) _fiMap[k] = [];
           _fiMap[k].push({ sid: s.id, tid: e.to, a: a, b: b, label: e.label });
@@ -2057,11 +2057,11 @@ var MARK_DATA_URI = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABDgAAAM7CAYAA
         var fromLeft = avgSrcX < x2;
         var entryX = fromLeft ? b.x : b.x + b.w;
         var entryY = b.y + b.h / 2;
-        /* Shared horizontal bus: all sources drop to busY, travel along the
-           bus to a shared trunk, then one line enters the target's side. */
+        var gap = Math.max(COL_GAP, b.w * 0.35);
+        var trunkSX = fromLeft ? entryX - gap : entryX + gap;
         grp.forEach(function (g) {
           var sx = g.a.x + g.a.w / 2, sy = g.a.y + g.a.h;
-          var path = 'M' + sx + ',' + sy + ' L' + sx + ',' + busY + ' L' + entryX + ',' + busY + ' L' + entryX + ',' + entryY;
+          var path = 'M' + sx + ',' + sy + ' L' + sx + ',' + busY + ' L' + trunkSX + ',' + busY + ' L' + trunkSX + ',' + entryY + ' L' + entryX + ',' + entryY;
           conns.push({ from: g.sid, to: g.tid, path: path, label: g.label, labelPos: { x: sx + 8, y: (sy + busY) / 2 }, back: false });
         });
       } else {
