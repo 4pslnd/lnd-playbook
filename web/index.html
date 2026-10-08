@@ -1627,7 +1627,10 @@ var MARK_DATA_URI = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABDgAAAM7CAYAA
     /* Stagger parallel fork-join: when a non-decision step fans out to 3+
        children that ALL converge to the SAME single target, stack them
        vertically so the diagram reads as a column instead of a wide row.
-       Only applies to the fork-join pattern (A → [B,C,D] → E). */
+       Only applies to the fork-join pattern (A → [B,C,D] → E).
+       Skip stagger when children are in different lanes — they already
+       occupy separate columns and share a row cleanly. Only stagger
+       same-lane groups of 3+. */
     (function () {
       steps.forEach(function (s) {
         if (s.type === 'decision') return;
@@ -1647,7 +1650,16 @@ var MARK_DATA_URI = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABDgAAAM7CAYAA
           else if (cFwd[0].to !== joinId) allJoin = false;
         });
         if (!allJoin || !joinId) return;
-        for (var i = 1; i < same.length; i++) depth[same[i].to] = baseD + i;
+        /* Group children by lane; only stagger within lanes that have 3+. */
+        var byLane = {};
+        same.forEach(function (e) { var L = byId[e.to].lane || ''; (byLane[L] = byLane[L] || []).push(e); });
+        var lanes = Object.keys(byLane);
+        var needStagger = lanes.some(function (L) { return byLane[L].length >= 3; });
+        if (!needStagger) return;
+        lanes.forEach(function (L) {
+          var grp = byLane[L]; if (grp.length < 3) return;
+          for (var i = 1; i < grp.length; i++) depth[grp[i].to] = baseD + i;
+        });
       });
       var changed = true;
       while (changed) {
