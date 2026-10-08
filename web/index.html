@@ -1453,7 +1453,11 @@ var MARK_DATA_URI = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABDgAAAM7CAYAA
 
   /* Back edges = anything that revisits a node still open on the DFS stack.
      Those are the "No, go back and redo it" arrows; they must not push
-     a node further down or the whole diagram stretches without end. */
+     a node further down or the whole diagram stretches without end.
+     Post-processing: when a DFS-discovered back edge is NOT a "No" branch
+     but the same cycle contains a "No" decision edge, swap them — the "No"
+     edge is the natural retry loop and breaking it keeps earlier nodes at
+     shallow depths. */
   function findBackEdges(steps, byId, startId) {
     var state = {}, back = {};
     function visit(id) {
@@ -1467,6 +1471,60 @@ var MARK_DATA_URI = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABDgAAAM7CAYAA
     }
     if (byId[startId]) visit(startId);
     steps.forEach(function (s) { if (!state[s.id]) visit(s.id); });
+
+    /* Build a quick edge-label lookup for "No" detection. */
+    var edgeLabel = {};
+    steps.forEach(function (s) {
+      outEdges(s).forEach(function (e) { edgeLabel[s.id + '>' + e.to] = e.label; });
+    });
+
+    /* For each back edge A→B that is NOT a "No" branch, BFS forward from B
+       through non-back edges looking for a "No" edge D→E where E can reach A
+       (or E===A). If found, swap: the "No" edge becomes the back edge. */
+    var keys = Object.keys(back);
+    keys.forEach(function (key) {
+      if (edgeLabel[key] === 'No') return;
+      var parts = key.split('>'), src = parts[0], tgt = parts[1];
+
+      /* BFS from tgt through forward edges, collecting all "No" edges found. */
+      var visited = {}, queue = [tgt], noEdges = [];
+      visited[tgt] = true;
+      while (queue.length) {
+        var cur = queue.shift();
+        outEdges(byId[cur] || {}).forEach(function (e) {
+          if (!byId[e.to] || back[cur + '>' + e.to]) return;
+          if (e.label === 'No') noEdges.push({ from: cur, to: e.to });
+          if (!visited[e.to]) { visited[e.to] = true; queue.push(e.to); }
+        });
+      }
+
+      /* Check each "No" edge: does its target reach src via forward edges? */
+      for (var i = 0; i < noEdges.length; i++) {
+        var ne = noEdges[i];
+        if (ne.to === src || ne.to === tgt) {
+          delete back[key];
+          back[ne.from + '>' + ne.to] = true;
+          return;
+        }
+        var v2 = {}, q2 = [ne.to];
+        v2[ne.to] = true;
+        var found = false;
+        while (q2.length && !found) {
+          var c2 = q2.shift();
+          outEdges(byId[c2] || {}).forEach(function (e2) {
+            if (found || !byId[e2.to] || back[c2 + '>' + e2.to]) return;
+            if (e2.to === src || e2.to === tgt) { found = true; return; }
+            if (!v2[e2.to]) { v2[e2.to] = true; q2.push(e2.to); }
+          });
+        }
+        if (found) {
+          delete back[key];
+          back[ne.from + '>' + ne.to] = true;
+          return;
+        }
+      }
+    });
+
     return back;
   }
 
