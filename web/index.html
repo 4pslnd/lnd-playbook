@@ -1824,7 +1824,7 @@ var MARK_DATA_URI = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABDgAAAM7CAYAA
       var a = pos[s.id]; if (!a) return;
       outEdges(s).forEach(function (e) {
         var b = pos[e.to]; if (!b) return;
-        if (b.depth > a.depth && !back[s.id + '>' + e.to] && a.lane !== b.lane) {
+        if (b.depth > a.depth && !back[s.id + '>' + e.to]) {
           var k = e.to + '|' + a.depth;
           if (!_fiMap[k]) _fiMap[k] = [];
           _fiMap[k].push({ sid: s.id, tid: e.to, a: a, b: b, label: e.label });
