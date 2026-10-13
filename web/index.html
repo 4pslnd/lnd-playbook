@@ -1498,26 +1498,29 @@ var MARK_DATA_URI = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABDgAAAM7CAYAA
         });
       }
 
-      /* Check each "No" edge: does its target reach src via forward edges? */
+      /* Check each "No" edge: is it ON the cycle path tgt → … → src?
+         The "No" edge must lie on the actual cycle for the swap to break it.
+         ne.from must be reachable from tgt, and src must be reachable from ne.from
+         WITHOUT traversing the "No" edge itself (proving it is on the path). */
       for (var i = 0; i < noEdges.length; i++) {
         var ne = noEdges[i];
-        if (ne.to === src || ne.to === tgt) {
-          delete back[key];
-          back[ne.from + '>' + ne.to] = true;
-          return;
+        if (!visited[ne.from]) continue;
+        var onCycle = false;
+        if (ne.to === src) { onCycle = true; }
+        else if (ne.to === tgt) { continue; }
+        else {
+          var v2 = {}, q2 = [ne.to];
+          v2[ne.to] = true;
+          while (q2.length && !onCycle) {
+            var c2 = q2.shift();
+            outEdges(byId[c2] || {}).forEach(function (e2) {
+              if (onCycle || !byId[e2.to] || back[c2 + '>' + e2.to]) return;
+              if (e2.to === src) { onCycle = true; return; }
+              if (!v2[e2.to]) { v2[e2.to] = true; q2.push(e2.to); }
+            });
+          }
         }
-        var v2 = {}, q2 = [ne.to];
-        v2[ne.to] = true;
-        var found = false;
-        while (q2.length && !found) {
-          var c2 = q2.shift();
-          outEdges(byId[c2] || {}).forEach(function (e2) {
-            if (found || !byId[e2.to] || back[c2 + '>' + e2.to]) return;
-            if (e2.to === src || e2.to === tgt) { found = true; return; }
-            if (!v2[e2.to]) { v2[e2.to] = true; q2.push(e2.to); }
-          });
-        }
-        if (found) {
+        if (onCycle) {
           delete back[key];
           back[ne.from + '>' + ne.to] = true;
           return;
@@ -1661,8 +1664,8 @@ var MARK_DATA_URI = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABDgAAAM7CAYAA
           for (var i = 1; i < grp.length; i++) depth[grp[i].to] = baseD + i;
         });
       });
-      var changed = true;
-      while (changed) {
+      var changed = true, _guard = 0, _maxIter = steps.length * steps.length;
+      while (changed && ++_guard < _maxIter) {
         changed = false;
         steps.forEach(function (s) {
           outEdges(s).forEach(function (e) {
