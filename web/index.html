@@ -1393,7 +1393,7 @@ textarea{resize:vertical;min-height:60px;line-height:1.5}
 
 <script>
 var GAS_MODE = true;
-var APP_VERSION = '2026.10.13a';
+var APP_VERSION = '2026.10.20a';
 console.log('[L&D Playbook] v' + APP_VERSION);
 var CURRENT_USER = "";
 var DOC = { processes: [] };
@@ -2573,9 +2573,9 @@ function nameFromEmail(e) { if (!e) return ''; return String(e).split('@')[0].sp
 function displayName(email) { if (!email) return ''; var m = memberByEmail(email); return m ? m.name : email; }
 /* Build role-grouped <option>s so a long people list reads by role instead of
    one flat jumble. `members` is the pool; `cur` the selected email. */
-var ROLE_ORDER = ['L&D Head', 'EDL', 'TPM', 'Intern', 'No access', 'Custom'];
+var ROLE_ORDER = ['Superadmin', 'Admin', 'Custom', 'Guest'];
 function roleGroupedOptions(members, cur, includeNone) {
-  var groups = {}; members.forEach(function (m) { var r = m.role || 'Custom'; (groups[r] = groups[r] || []).push(m); });
+  var groups = {}; members.forEach(function (m) { var r = roleOf(m); (groups[r] = groups[r] || []).push(m); });
   var order = Object.keys(groups).sort(function (a, b) {
     var ia = ROLE_ORDER.indexOf(a), ib = ROLE_ORDER.indexOf(b); return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib) || a.localeCompare(b); });
   var html = includeNone ? '<option value="">— none —</option>' : '';
@@ -2616,16 +2616,23 @@ function plural(n, word) { return n + ' ' + word + (n === 1 ? '' : 's'); }
    In real Apps Script this table lives in the Google Sheet; the UI below is the
    admin screen that edits it. */
 var SUPPORT_EMAIL = 'lnd@pizza4ps.com';
-var ROLES = ['L&D Head', 'EDL', 'TPM', 'Intern', 'No access', 'Custom'];
-/* Each role suggests a starting access set when a member is added. Admins can
-   still fine-tune per pillar / per item afterwards (that flips role to Custom). */
+/* Four tiers. Superadmin = the DB `admin` flag (full edit, manage everyone,
+   approve all). Admin = views every pillar, edits only where granted, manages
+   only the members they added (Superadmins are emailed). Custom = L&D team
+   member. Guest = outside the team, view-only on individually shared items. */
+var ROLES = ['Superadmin', 'Admin', 'Custom', 'Guest'];
+var ROLE_RANK = { Guest: 0, Custom: 1, Admin: 2, Superadmin: 3 };
+function roleOf(u) {
+  if (!u) return 'Guest';
+  if (u.admin) return 'Superadmin';
+  if (u.role === 'Admin' || u.role === 'Custom' || u.role === 'Guest') return u.role;
+  return /@pizza4ps\.com$/i.test(u.email || '') ? 'Custom' : 'Guest';
+}
+function roleRank(u) { return ROLE_RANK[roleOf(u)]; }
 function applyRolePreset(m, role) {
-  m.role = role; m.items = m.items || {};
-  if (role === 'L&D Head' || role === 'EDL') { m.admin = true; m.pillars = {}; }
-  else if (role === 'TPM') { m.admin = false; m.pillars = { elearning: 'view', data: 'view', logistics: 'view', training: 'edit' }; }
-  else if (role === 'Intern') { m.admin = false; m.pillars = { elearning: 'view', data: 'view', logistics: 'view', training: 'view' }; }
-  else if (role === 'No access') { m.admin = false; m.pillars = { elearning: 'none', data: 'none', logistics: 'none', training: 'none' }; }
-  /* Custom: leave whatever is there */
+  m.role = role; m.items = m.items || {}; m.pillars = m.pillars || {};
+  m.admin = role === 'Superadmin';
+  if (role === 'Superadmin' || role === 'Guest') m.pillars = {};
 }
 var MEMBERS = [
   { email: 'yen.tran@pizza4ps.com',   name: 'Yen Tran',   role: 'L&D Head', admin: true,  pillars: {}, items: {} },
@@ -2645,9 +2652,12 @@ function accessLevelFor(u, item) {
   if (!u) return 'none';
   if (u.admin) return 'edit';
   if (item.pillar === 'guide') return 'view';   /* Guide pillar is readable by every member */
-  var lvl = (u.pillars && u.pillars[item.pillar]) || 'none';
-  if (item.pillar === CAREER_KEY && u.items && u.items[careerBUKey(item)]) lvl = u.items[careerBUKey(item)];  /* per-BU override */
+  var guest = roleOf(u) === 'Guest';
+  var lvl = guest ? 'none' : ((u.pillars && u.pillars[item.pillar]) || 'none');
+  if (!guest && item.pillar === CAREER_KEY && u.items && u.items[careerBUKey(item)]) lvl = u.items[careerBUKey(item)];  /* per-BU override */
   if (u.items && u.items[item.process_id]) lvl = u.items[item.process_id];  /* single-item exception wins */
+  if (guest && lvl === 'edit') lvl = 'view';    /* guests are always view-only */
+  if (roleOf(u) === 'Admin' && lvl === 'none') lvl = 'view';   /* Admin sees every pillar */
   return lvl;
 }
 function accessLevel(item) { return accessLevelFor(currentUser, item); }
@@ -2656,11 +2666,22 @@ function canCreateIn(pillar) {
   if (currentUser.admin) return true;
   return ((currentUser.pillars && currentUser.pillars[pillar]) || 'none') === 'edit';
 }
-function isAdmin() { return !!currentUser.admin; }
+function isAdmin() { return !!currentUser.admin; }   /* = Superadmin */
+function isSuperadmin() { return roleOf(currentUser) === 'Superadmin'; }
+function canManageAccess() { var r = roleOf(currentUser); return r === 'Superadmin' || r === 'Admin'; }
+/* An Admin may change only Custom/Guest members they added themselves. */
+function canEditMember(m) {
+  if (isSuperadmin()) return true;
+  if (roleOf(currentUser) !== 'Admin' || !m) return false;
+  var r = roleOf(m);
+  return (r === 'Custom' || r === 'Guest') && (m.added_by || '').toLowerCase() === (currentUser.email || '').toLowerCase();
+}
 /* Guest = signed-in but no pillar-wide access; only individually shared items.
    Their home shows just those documents instead of the full pillar catalogue. */
 function isGuest() {
   if (isAdmin()) return false;
+  if (roleOf(currentUser) === 'Admin') return false;
+  if (roleOf(currentUser) === 'Guest') return true;
   var pl = currentUser.pillars || {};
   for (var k in pl) { if (pl[k] === 'view' || pl[k] === 'edit') return false; }
   return true;
@@ -2784,7 +2805,7 @@ function pdfStepHtml(s, num, unit) {
    works offline. A process prints landscape (whole flowchart fit to one page +
    step details after it); an alignment prints portrait (title + body). */
 function exportPDF(p) {
-  if (!canEditItem(p)) { Modal.alert('Editors only', 'Only editors can export a PDF.'); return; }
+  if (!isSuperadmin()) { Modal.alert('Superadmin only', 'Only a Superadmin can export a PDF.'); return; }
   var kind = kindOf(p), isProc = kind === 'process';
   var PW = 1497, PH = 1030;   /* usable A3-landscape px at ~96dpi (12mm margins) */
 
@@ -3796,7 +3817,7 @@ function picCountsFor(list) { var c = {}; list.forEach(function (p) { var e = p.
 function picFilterControl(current, countsMap, idp) {
   idp = idp || 'pic';
   var total = 0; Object.keys(countsMap).forEach(function (k) { total += countsMap[k]; });
-  var groups = {}; MEMBERS.forEach(function (m) { var r = m.role || 'Custom'; (groups[r] = groups[r] || []).push(m); });
+  var groups = {}; MEMBERS.forEach(function (m) { var r = roleOf(m); (groups[r] = groups[r] || []).push(m); });
   /* PIC emails that are no longer members (removed) still appear, by saved email */
   var known = {}; MEMBERS.forEach(function (m) { known[m.email] = 1; });
   var removed = Object.keys(countsMap).filter(function (e) { return !known[e]; });
@@ -3831,7 +3852,7 @@ function wirePicFilter(root, onPick, idp) {
    there is no second funnel — just one list revealed by the panel's filter icon). */
 function notiPicInline(current, countsMap) {
   var total = 0; Object.keys(countsMap).forEach(function (k) { total += countsMap[k]; });
-  var groups = {}; MEMBERS.forEach(function (m) { var r = m.role || 'Custom'; (groups[r] = groups[r] || []).push(m); });
+  var groups = {}; MEMBERS.forEach(function (m) { var r = roleOf(m); (groups[r] = groups[r] || []).push(m); });
   var known = {}; MEMBERS.forEach(function (m) { known[m.email] = 1; });
   var removed = Object.keys(countsMap).filter(function (e) { return !known[e]; });
   var h = '<div class="hb-npicbox"><div class="hb-picpop__hd">Filter by PIC</div>' +
@@ -3925,7 +3946,7 @@ function homeByPillar() {
 function homeByRole() {
   var groups = {}, order = [];
   DOC.processes.forEach(function (p) { if (p.pillar === 'guide' || !visibleHome(p)) return;
-    var m = memberByEmail(p.pic || ''); var k = (m && m.role) ? m.role : '(No role)';
+    var m = memberByEmail(p.pic || ''); var k = m ? roleOf(m) : '(No role)';
     if (!groups[k]) { groups[k] = []; order.push(k); }
     groups[k].push(p);
   });
@@ -4163,13 +4184,68 @@ function drawItem() {
   if (kindOf(p) === 'alignment') return drawAlignment(p);
   return drawProcess(p);
 }
-function isReviewer(p) { return p.reviewer && (currentUser.email === p.reviewer || currentUser.admin); }
+/* Approval must go UP: the reviewer outranks the sender and can edit the item
+   (Custom -> Admin/Superadmin, Admin -> Superadmin). Superadmins, having no one
+   above them, may send to another Superadmin (or publish directly). */
+function reviewerCandidates(item) {
+  var me = currentUser, myRank = roleRank(me);
+  return MEMBERS.filter(function (m) {
+    if (m.email === me.email || accessLevelFor(m, item) !== 'edit') return false;
+    var r = roleRank(m);
+    return r > myRank || (myRank === ROLE_RANK.Superadmin && r === myRank);
+  });
+}
+function isReviewer(p) {
+  if (!p.reviewer) return false;
+  if (isSuperadmin()) return true;
+  if (currentUser.email !== p.reviewer || !canEditItem(p)) return false;
+  var sender = memberByEmail(p.updatedBy);
+  return !sender || roleRank(currentUser) > roleRank(sender);
+}
+/* Any editor of a document can share it, view-only, with a Guest (someone
+   outside the L&D team). The server function checks the sharer really can edit
+   this document; every share/unshare is emailed to the Superadmins. */
+function openGuestShare(p) {
+  var guests = MEMBERS.filter(function (m) { return roleOf(m) === 'Guest' && m.items && m.items[p.process_id] === 'view'; });
+  var body = '<p style="margin:0 0 10px;font-size:13px;color:#666">Guests sign in with their email and see <b>only</b> the documents shared with them, view-only. Superadmins are emailed about every share.</p>' +
+    (guests.length ? '<ul class="reviewer-pick">' + guests.map(function (g) {
+      return '<li style="cursor:default"><span class="reviewer-pick__name">' + esc(g.name || g.email) + ' <small style="color:#888">' + esc(g.email) + '</small></span>' +
+        '<button type="button" class="mk-btn adm-remove" data-unshare="' + esc(g.email) + '" style="padding:3px 9px;font-size:11px">Stop sharing</button></li>'; }).join('') + '</ul>'
+      : '<p style="font-size:13px;color:#888">Not shared with any guest yet.</p>') +
+    '<input type="email" class="mm-input" id="guestShareEmail" placeholder="guest@example.com" style="margin-top:10px">';
+  var h = Modal.custom('Share with a guest', body, [
+    { label: 'Close', onClick: function () { Modal.close(); } },
+    { label: 'Share (view only)', primary: true, onClick: function () {
+      var em = (h.querySelector('#guestShareEmail').value || '').trim().toLowerCase();
+      if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(em)) { Modal.alert('Invalid email', 'Please enter a valid email address.'); return; }
+      var ex = memberByEmail(em);
+      if (ex && roleOf(ex) !== 'Guest') { Modal.alert('Already a team member', esc(em) + ' is a ' + esc(roleOf(ex)) + ' member. Ask a Superadmin or Admin to give them access in Manage access.'); return; }
+      doGuestShare(p, em, 'view');
+    } }
+  ]);
+  h.querySelectorAll('[data-unshare]').forEach(function (b) { b.onclick = function () { doGuestShare(p, b.getAttribute('data-unshare'), 'none'); }; });
+}
+function doGuestShare(p, email, level) {
+  var done = function () {
+    var g = memberByEmail(email);
+    if (!g) { g = { email: email, name: nameFromEmail(email), role: 'Guest', admin: false, pillars: {}, items: {}, added_by: currentUser.email }; MEMBERS.push(g); }
+    g.items = g.items || {}; if (level === 'none') delete g.items[p.process_id]; else g.items[p.process_id] = level;
+    if (typeof window.__notifyAccess === 'function') window.__notifyAccess({ kind: 'guest_share', actorEmail: currentUser.email, actorName: displayName(currentUser.email),
+      memberEmail: email, memberRole: 'Guest', changes: level === 'none' ? 'Stopped sharing' : 'Shared (view only)', access: p.title,
+      link: location.href.split('#')[0] + '#/' + encodeURIComponent(p.pillar || '') + '/' + (slug(p.title) ? slug(p.title) + '~' : '') + encodeURIComponent(p.process_id) });
+    Modal.close(); openGuestShare(p);
+  };
+  if (typeof GAS_MODE === 'undefined' || !GAS_MODE) { done(); return; }
+  google.script.run.withSuccessHandler(function (r) { if (r && r.ok === false) { Modal.alert('Could not share', errText(r)); return; } done(); })
+    .withFailureHandler(function (e) { Modal.alert('Could not share', esc((e && e.message) || 'Please try again.')); }).shareGuest({ email: email, processId: p.process_id, level: level });
+}
 function heroFor(p, flowLabelHtml) {
   var kind = kindOf(p), edit = canEditItem(p);
   var histBtn = edit ? '<button class="mk-btn hb-history" id="histBtn" title="See and restore earlier versions">&#8635; History</button>' : '';
   var delBtn = edit ? '<button class="mk-btn adm-remove" id="delProcBtn" title="Delete (move to Trash)">🗑 Delete</button>' : '';
   var moveBtn = isAdmin() ? '<button class="mk-btn" id="moveProcBtn" title="Move to another pillar">⇄ Move</button>' : '';
-  var pdfBtn = edit ? '<button class="mk-btn" id="pdfBtn" title="Export this document as a PDF">⭳ Export PDF</button>' : '';
+  var pdfBtn = isSuperadmin() ? '<button class="mk-btn" id="pdfBtn" title="Export this document as a PDF">⭳ Export PDF</button>' : '';
+  var shareBtn = edit ? '<button class="mk-btn" id="guestShareBtn" title="Share this document, view-only, with someone outside the team">&#128101; Share with guest</button>' : '';
   var editBtn = edit ? '<button class="mk-btn mk-btn--primary hb-editbtn" id="editProcBtn">✎ Edit this ' + KIND_LABEL[kind].toLowerCase() + '</button>' : '';
   var reviewChip = '', approveBtns = '';
   if (p.review === 'pending') {
@@ -4191,7 +4267,7 @@ function heroFor(p, flowLabelHtml) {
   return draftBanner + '<section class="proc-hero"><div class="proc-hero__top">' +
     '<span class="mk-status-pill mk-status-pill--' + p.status + '">' + p.status + '</span>' +
     '<span class="kind-tag kind-tag--' + kind + '">' + KIND_LABEL[kind] + '</span>' + reviewChip +
-    '<div class="mk-grow"></div>' + approveBtns + pdfBtn + moveBtn + histBtn + delBtn + editBtn + '</div>' +
+    '<div class="mk-grow"></div>' + approveBtns + pdfBtn + shareBtn + moveBtn + histBtn + delBtn + editBtn + '</div>' +
     '<h1 class="hb-h1">' + esc(p.title) + '</h1>' +
     '<p class="hb-lede">' + esc(p.subtitle || '') + '</p>' +
     (flowLabelHtml || '') +
@@ -4208,6 +4284,7 @@ function wireItemHeader(p) {
   var db = $('delProcBtn'); if (db) db.onclick = function () { softDeleteItem(p); };
   var mv = $('moveProcBtn'); if (mv) mv.onclick = function () { moveItem(p); };
   var pb = $('pdfBtn'); if (pb) pb.onclick = function () { exportPDF(p); };
+  var gsb = $('guestShareBtn'); if (gsb) gsb.onclick = function () { openGuestShare(p); };
   var hb = $('histBtn'); if (hb) hb.onclick = function () { openHistory(p); };
   var a = $('approveBtn'); if (a) a.onclick = function () {
     var prev = p.review, prb = p.reviewedBy, pra = p.reviewedAt, prc = p.reviewComment;
@@ -4620,11 +4697,10 @@ function drawEditorBar() {
   $('pkind').disabled = true;            // Type is fixed once chosen at creation
   $('pstatus').innerHTML = STATUSES.map(function (s) { return '<option value="' + s + '"' + (P.status === s ? ' selected' : '') + '>' + s + '</option>'; }).join('');
   var picSel = $('ppic');
-  picSel.innerHTML = roleGroupedOptions(MEMBERS, P.pic, true) +
+  picSel.innerHTML = roleGroupedOptions(MEMBERS.filter(function (m) { return roleOf(m) !== 'Guest' || m.email === P.pic; }), P.pic, true) +
     (P.pic && !memberByEmail(P.pic) ? '<option value="' + esc(P.pic) + '" selected>' + esc(P.pic) + ' (removed)</option>' : '');
   var revSel = $('previewer');
-  var REVIEWER_ROLES = { 'L&D Head': 1, 'EDL': 1, 'TPM': 1 };
-  var reviewers = MEMBERS.filter(function (m) { return REVIEWER_ROLES[m.role]; });
+  var reviewers = reviewerCandidates(P);
   if (P.reviewer && !reviewers.some(function (m) { return m.email === P.reviewer; })) { var ex = memberByEmail(P.reviewer); if (ex) reviewers = reviewers.concat([ex]); }
   revSel.innerHTML = roleGroupedOptions(reviewers, P.reviewer, true) +
     (P.reviewer && !memberByEmail(P.reviewer) ? '<option value="' + esc(P.reviewer) + '" selected>' + esc(P.reviewer) + ' (removed)</option>' : '');
@@ -5052,6 +5128,7 @@ var BRAND_COLORS = [
 /* Export an alignment document. PDF opens a clean print window (Save as PDF);
    Word writes a .doc file the browser downloads, editable in Microsoft Word. */
 function exportAlignmentPDF(p) {
+  if (!isSuperadmin()) { Modal.alert('Superadmin only', 'Only a Superadmin can export a PDF.'); return; }
   var w = window.open('', '_blank');
   if (!w) { Modal.alert('Pop-up blocked', 'Please allow pop-ups for this site, then export again.'); return; }
   var css = 'body{font-family:Georgia,"Century Std",serif;color:#1B2233;line-height:1.7;max-width:760px;margin:36px auto;padding:0 24px}' +
@@ -5299,7 +5376,9 @@ function wireRichToolbar(ed) {
   document.addEventListener('mouseup', function () { if (rz) { rz = null; document.body.style.cursor = ''; sync(); } });
   var exBtn = $('alExport'), exMenu = $('alExportMenu');
   if (exBtn && exMenu) {
-    exBtn.onclick = function (e) { e.stopPropagation(); exMenu.hidden = !exMenu.hidden; };
+    exBtn.onclick = function (e) { e.stopPropagation();
+      var pdfOpt = exMenu.querySelector('[data-exp="pdf"]'); if (pdfOpt) pdfOpt.hidden = !isSuperadmin();
+      exMenu.hidden = !exMenu.hidden; };
     exMenu.querySelectorAll('[data-exp]').forEach(function (b) { b.onclick = function () {
       exMenu.hidden = true; if (b.getAttribute('data-exp') === 'pdf') exportAlignmentPDF(P); else exportAlignmentWord(P); }; });
     document.addEventListener('click', function (e) { if (exMenu && !exMenu.hidden && (!e.target.closest || !e.target.closest('.al-export'))) exMenu.hidden = true; });
@@ -5398,13 +5477,11 @@ function wireEditorChrome() {
   var saBtn = $('sendApprovalBtn'); if (saBtn) {
     saBtn.onclick = function () {
       if (!P) return;
-      var candidates = MEMBERS.filter(function (m) {
-        return m.email !== currentUser.email && accessLevelFor(m, P) === 'edit';
-      });
-      if (!candidates.length) { Modal.alert('No reviewers', 'No other members have edit access to this pillar.'); return; }
+      var candidates = reviewerCandidates(P);
+      if (!candidates.length) { Modal.alert('No reviewers', 'No one with a higher role (Admin or Superadmin) has edit access to this pillar yet. Ask a Superadmin to grant it in Manage access.'); return; }
       var body = '<p style="margin:0 0 10px;font-size:13px;color:#666">Select a reviewer to send for approval:</p><ul class="reviewer-pick">' +
         candidates.map(function (m) {
-          return '<li data-email="' + esc(m.email) + '"><span class="reviewer-pick__name">' + esc(m.name || m.email) + '</span><span class="reviewer-pick__role">' + esc(m.role || '') + '</span></li>';
+          return '<li data-email="' + esc(m.email) + '"><span class="reviewer-pick__name">' + esc(m.name || m.email) + '</span><span class="reviewer-pick__role">' + esc(roleOf(m)) + '</span></li>';
         }).join('') + '</ul>';
       var h = Modal.custom('Send for approval', body, [{ label: 'Cancel', onClick: function () { Modal.close(); } }]);
       h.querySelectorAll('.reviewer-pick li').forEach(function (li) {
@@ -5429,10 +5506,11 @@ document.addEventListener('keydown', function (e) {
 /* ============================ admin: manage access ============================ */
 var adminSel = null, admExpanded = {}, admQuery = '';
 function drawAdmin() {
-  if (!isAdmin()) { goHome(); return; }
+  if (!canManageAccess()) { goHome(); return; }
   var S = $('adminScreen');
   if (!adminSel) adminSel = MEMBERS[0].email;
   var m = memberByEmail(adminSel) || MEMBERS[0];
+  var can = canEditMember(m);
   var itemsByPillar = {};
   PILLARS.forEach(function (pl) { itemsByPillar[pl.key] = DOC.processes.filter(function (p) { return p.pillar === pl.key; }); });
 
@@ -5440,35 +5518,51 @@ function drawAdmin() {
     '<button class="mk-btn mk-btn--primary" id="admAdd" style="padding:5px 10px;font-size:11.5px">+ Add</button></div>' +
     '<input class="adm-search" id="admSearch" placeholder="Search people…" value="' + esc(admQuery) + '">' +
     '<div class="adm-members">' + MEMBERS.map(function (u) {
-      return '<button class="adm-member' + (u.email === adminSel ? ' adm-member--on' : '') + '" data-mem="' + esc(u.email) + '" data-search="' + esc(((u.name || '') + ' ' + u.email + ' ' + (u.role || '')).toLowerCase()) + '">' +
-        '<span class="pic-avatar">' + esc((u.name[0] || '?').toUpperCase()) + '</span>' +
-        '<span class="adm-member__col"><b>' + esc(u.name) + '</b><em>' + esc(u.email) + '</em></span>' +
-        '<span class="adm-badge' + (u.admin ? ' adm-badge--admin' : '') + '">' + esc(u.role || 'Custom') + '</span></button>';
+      var r = roleOf(u);
+      return '<button class="adm-member' + (u.email === adminSel ? ' adm-member--on' : '') + '" data-mem="' + esc(u.email) + '" data-search="' + esc(((u.name || '') + ' ' + u.email + ' ' + r).toLowerCase()) + '">' +
+        '<span class="pic-avatar">' + esc(((u.name || u.email)[0] || '?').toUpperCase()) + '</span>' +
+        '<span class="adm-member__col"><b>' + esc(u.name || u.email) + '</b><em>' + esc(u.email) + '</em></span>' +
+        '<span class="adm-badge' + (r === 'Superadmin' || r === 'Admin' ? ' adm-badge--admin' : '') + '">' + esc(r) + '</span></button>';
     }).join('') + '</div></div>';
 
-  /* Segmented None/View/Edit control. withDefault adds a "Default" state (no
-     override — follow the pillar) used by per-document and per-BU rows. */
-  function accSeg(attr, cur, withDefault) {
-    var opts = withDefault ? [['', 'Default'], ['none', 'None'], ['view', 'View'], ['edit', 'Edit']]
-                           : [['none', 'None'], ['view', 'View'], ['edit', 'Edit']];
-    cur = cur == null ? (withDefault ? '' : 'none') : cur;
-    return '<span class="acc-seg" data-acc="' + esc(attr) + '">' + opts.map(function (o) {
+  /* Segmented control. withDefault adds a "Default" state (no override — follow
+     the pillar). guestOnly limits the choices to No / View for a Guest. */
+  function accSeg(attr, cur, withDefault, guestOnly) {
+    var opts = guestOnly ? [['', 'No'], ['view', 'View']]
+      : withDefault ? [['', 'Default'], ['none', 'None'], ['view', 'View'], ['edit', 'Edit']]
+                    : [['none', 'None'], ['view', 'View'], ['edit', 'Edit']];
+    cur = cur == null ? (withDefault || guestOnly ? '' : 'none') : cur;
+    return '<span class="acc-seg' + (can ? '' : ' acc-seg--ro') + '" data-acc="' + esc(attr) + '"' + (can ? '' : ' style="opacity:.55;pointer-events:none"') + '>' + opts.map(function (o) {
       var on = cur === o[0];
       return '<button type="button" data-v="' + o[0] + '" class="acc-seg__b' + (on ? ' is-on' + (o[0] === 'view' ? ' acc--view' : (o[0] === 'edit' ? ' acc--edit' : '')) : '') + '">' + o[1] + '</button>';
     }).join('') + '</span>';
   }
 
+  var mRole = roleOf(m);
+  var roleChoices = isSuperadmin() ? ROLES : ['Custom', 'Guest'];
+  if (roleChoices.indexOf(mRole) < 0) roleChoices = [mRole].concat(roleChoices);
   var detail = '<div class="adm-detail"><div class="adm-detail__head">' +
-    '<span class="pic-avatar">' + esc((m.name[0] || '?').toUpperCase()) + '</span>' +
-    '<div style="flex:1"><input id="admName" class="adm-name" value="' + esc(m.name) + '"><div class="adm-detail__email">' + esc(m.email) + '</div></div>' +
-    (m.email === currentUser.email ? '' : '<button class="mk-btn adm-remove" id="admRemove">Remove</button>') + '</div>' +
-    '<div class="adm-row adm-row--role"><span><b>Role</b> — sets a suggested access</span><select id="admRole">' +
-      ROLES.map(function (r) { return '<option value="' + esc(r) + '"' + (m.role === r ? ' selected' : '') + '>' + esc(r) + '</option>'; }).join('') + '</select></div>';
+    '<span class="pic-avatar">' + esc(((m.name || m.email)[0] || '?').toUpperCase()) + '</span>' +
+    '<div style="flex:1"><input id="admName" class="adm-name" value="' + esc(m.name || '') + '"' + (can ? '' : ' readonly') + '><div class="adm-detail__email">' + esc(m.email) +
+      (m.added_by ? ' · added by ' + esc(displayName(m.added_by)) : '') + '</div></div>' +
+    (m.email === currentUser.email || !can ? '' : '<button class="mk-btn adm-remove" id="admRemove">Remove</button>') + '</div>' +
+    '<div class="adm-row adm-row--role"><span><b>Role</b></span><select id="admRole"' + (can && m.email !== currentUser.email ? '' : ' disabled') + '>' +
+      roleChoices.map(function (r) { return '<option value="' + esc(r) + '"' + (mRole === r ? ' selected' : '') + '>' + esc(r) + '</option>'; }).join('') + '</select></div>';
+  if (!can) detail += '<p class="adm-hint" style="background:#FFF6E5">View only — as an Admin you can change only the Custom / Guest members you added yourself. Ask a Superadmin to change this person.</p>';
 
-  if (m.admin) {
-    detail += '<p class="adm-hint"><b>' + esc(m.role) + '</b> — full view &amp; edit on everything, and can manage access. Change the role to set access per pillar.</p>';
+  if (mRole === 'Superadmin') {
+    detail += '<p class="adm-hint"><b>Superadmin</b> — full view &amp; edit on everything, approves everything, manages access and exports PDF.</p>';
+  } else if (mRole === 'Guest') {
+    detail += '<div class="adm-sub">Shared documents <span>— a Guest sees only the documents set to “View” here (view-only).</span></div>';
+    PILLARS.filter(function (pl) { return pl.key !== 'guide'; }).forEach(function (pl) {
+      var items = (itemsByPillar[pl.key] || []).filter(function (p) { return !p.deleted; });
+      if (!items.length) return;
+      detail += '<div class="acc-row"><span class="acc-name">' + esc(pl.label) + '</span></div><div class="acc-subrows">' + items.map(function (it) {
+        return '<div class="acc-subrow"><span class="acc-subname">' + esc(it.title) + '</span>' + accSeg('item:' + it.process_id, m.items && m.items[it.process_id], false, true) + '</div>'; }).join('') + '</div>';
+    });
   } else {
     detail += '<div class="adm-sub">Access per pillar <span>— “View” sees published, “Edit” can change &amp; publish. Expand to override single documents.</span></div>';
+    if (mRole === 'Admin') detail += '<p class="adm-hint">An <b>Admin</b> can always view every pillar. Set <b>Edit</b> where they may change documents and approve submissions.</p>';
     /* normal pillars: pillar-level segmented control + optional per-document overrides */
     PILLARS.filter(function (pl) { return pl.key !== 'guide' && pl.key !== CAREER_KEY; }).forEach(function (pl) {
       detail += '<div class="acc-row"><span class="acc-name">' + esc(pl.label) + '</span>' + accSeg('pillar:' + pl.key, m.pillars && m.pillars[pl.key]) + '</div>';
@@ -5488,8 +5582,9 @@ function drawAdmin() {
         return '<div class="acc-subrow"><span class="acc-subname">' + flag + ' ' + esc(c) + ' · ' + esc(bu) + '</span>' + accSeg('bu:' + key, m.items && m.items['@career:' + key], true) + '</div>'; }).join('');
     }).join('') + '</div>';
     detail += '<div class="acc-guide">User guide — everyone with an account can view it.</div>';
-    detail += '<p class="adm-hint">Tip: set each pillar’s level, then override a single document or a business unit only where it should differ. Any change here switches the role to <b>Custom</b>.</p>';
+    detail += '<p class="adm-hint">Tip: set each pillar’s level, then override a single document or a business unit only where it should differ.</p>';
   }
+  if (!isSuperadmin()) detail += '<p class="adm-hint">Changes you make here are emailed to the Superadmins.</p>';
   detail += '</div>';
 
   S.innerHTML = '<section class="toc-hero"><h1 class="hb-h1">Manage access</h1>' +
@@ -5501,50 +5596,85 @@ function drawAdmin() {
     if (!email) return; email = email.trim().toLowerCase();
     if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) { Modal.alert('Invalid email', 'Please enter a valid email address.'); return; }
     if (memberByEmail(email)) { Modal.alert('Already a member', email + ' is already on the list.'); return; }
-    if (!/@pizza4ps\.com$/.test(email)) {   /* external → guest with no pillar access; share items individually */
-      Modal.confirm('Add external guest?', 'Add <b>' + esc(email) + '</b> as an external <b>guest</b> with no access yet. You then share individual documents with them below (“Access to specific items”, set to View). They sign in with this email and see only what you share.', function () {
-        var nu = { email: email, name: nameFromEmail(email), role: 'Guest', admin: false, pillars: {}, items: {} };
-        MEMBERS.push(nu); adminSel = email; persistMembers(); wireRoleSwitch(); drawAdmin();
-      }, { okLabel: 'Add guest' });
+    function add(role) {
+      var nu = { email: email, name: nameFromEmail(email), role: role, admin: false, pillars: {}, items: {}, added_by: currentUser.email };
+      applyRolePreset(nu, role); MEMBERS.push(nu); adminSel = email;
+      persistMember(nu, 'Added as ' + role); wireRoleSwitch(); drawAdmin();
+    }
+    if (!/@pizza4ps\.com$/.test(email)) {   /* external → Guest; share items individually */
+      Modal.confirm('Add external guest?', 'Add <b>' + esc(email) + '</b> as a <b>Guest</b> with no access yet. Then set the documents they may view below. They sign in with this email and see only what is shared.', function () { add('Guest'); }, { okLabel: 'Add guest' });
       return;
     }
-    Modal.choice('Role for ' + email, 'The display name is taken from the email (you can edit it later). Pick a starting access level:',
-      ROLES.filter(function (r) { return r !== 'Custom'; }).map(function (r) { return { label: r, value: r }; }), function (role) {
-        if (!role) return;
-        var nu = { email: email, name: nameFromEmail(email), role: role, admin: false, pillars: {}, items: {} };
-        applyRolePreset(nu, role); MEMBERS.push(nu); adminSel = email; persistMembers(); wireRoleSwitch();
-        Modal.alert('Member added', 'Added <b>' + esc(email) + '</b> (' + esc(nameFromEmail(email)) + ') with <b>' + esc(role) + '</b> access. They can sign in with their company email.');
-        drawAdmin();
-      });
+    var choices = isSuperadmin() ? ROLES : ['Custom', 'Guest'];
+    Modal.choice('Role for ' + email, 'The display name is taken from the email (you can edit it later). Pick a role, then set pillar access:',
+      choices.map(function (r) { return { label: r, value: r }; }), function (role) { if (role) add(role); });
   }); };
   var rm = $('admRemove'); if (rm) rm.onclick = function () { Modal.confirm('Remove member?', esc(m.email) + ' will lose all access.', function () {
-    MEMBERS = MEMBERS.filter(function (u) { return u.email !== m.email; }); adminSel = MEMBERS[0] && MEMBERS[0].email; persistMembers(); wireRoleSwitch(); drawAdmin(); }, { danger: true, okLabel: 'Remove' }); };
-  var nmEl = $('admName'); if (nmEl) nmEl.onchange = function () { m.name = nmEl.value.trim() || m.name; persistMembers(); wireRoleSwitch(); drawAdmin(); };
-  var roleEl = $('admRole'); if (roleEl) roleEl.onchange = function () { applyRolePreset(m, roleEl.value); persistMembers(); wireRoleSwitch(); drawAdmin(); };
+    MEMBERS = MEMBERS.filter(function (u) { return u.email !== m.email; }); adminSel = MEMBERS[0] && MEMBERS[0].email;
+    removeMember(m); wireRoleSwitch(); drawAdmin(); }, { danger: true, okLabel: 'Remove' }); };
+  if (!can) { var srch0 = $('admSearch'); if (srch0) srch0.oninput = searchMembers; return; }
+  var nmEl = $('admName'); if (nmEl) nmEl.onchange = function () { m.name = nmEl.value.trim() || m.name; persistMember(m, 'Renamed'); wireRoleSwitch(); drawAdmin(); };
+  var roleEl = $('admRole'); if (roleEl) roleEl.onchange = function () { applyRolePreset(m, roleEl.value); persistMember(m, 'Role set to ' + roleEl.value); wireRoleSwitch(); drawAdmin(); };
   S.querySelectorAll('.acc-seg__b').forEach(function (btn) { btn.onclick = function () {
     var a = btn.parentNode.getAttribute('data-acc'), v = btn.getAttribute('data-v');
-    if (a.indexOf('pillar:') === 0) { m.pillars = m.pillars || {}; m.pillars[a.slice(7)] = v; m.role = 'Custom'; }
-    else if (a.indexOf('item:') === 0) { m.items = m.items || {}; var ik = a.slice(5); if (v === '') delete m.items[ik]; else m.items[ik] = v; m.role = 'Custom'; }
-    else if (a.indexOf('bu:') === 0) { m.items = m.items || {}; var bk = '@career:' + a.slice(3); if (v === '') delete m.items[bk]; else m.items[bk] = v; m.role = 'Custom'; }
-    persistMembers(); drawAdmin();
+    if (a.indexOf('pillar:') === 0) { m.pillars = m.pillars || {}; m.pillars[a.slice(7)] = v; }
+    else if (a.indexOf('item:') === 0) { m.items = m.items || {}; var ik = a.slice(5); if (v === '') delete m.items[ik]; else m.items[ik] = v; }
+    else if (a.indexOf('bu:') === 0) { m.items = m.items || {}; var bk = '@career:' + a.slice(3); if (v === '') delete m.items[bk]; else m.items[bk] = v; }
+    persistMember(m, 'Access changed'); drawAdmin();
   }; });
   S.querySelectorAll('[data-exp]').forEach(function (x) { x.onclick = function () {
     var k = x.getAttribute('data-exp'); admExpanded[k] = !admExpanded[k]; drawAdmin(); }; });
-  var srch = $('admSearch'); if (srch) srch.oninput = function () {
-    admQuery = srch.value; var q = admQuery.trim().toLowerCase();
+  var srch = $('admSearch'); if (srch) srch.oninput = searchMembers;
+  function searchMembers() {
+    admQuery = $('admSearch').value; var q = admQuery.trim().toLowerCase();
     S.querySelectorAll('.adm-member').forEach(function (b) { b.style.display = (!q || (b.getAttribute('data-search') || '').indexOf(q) >= 0) ? '' : 'none'; });
-  };
+  }
 }
 
 /* ------------------------------ chrome: role, brand ------------------------------ */
 function wireRoleSwitch() {
-  var who = $('whoami'); if (who) who.textContent = currentUser.email + (currentUser.role ? ' · ' + currentUser.role : '');
+  var who = $('whoami'); if (who) who.textContent = currentUser.email + ' · ' + roleOf(currentUser);
   updateAdminLink();
 }
-/* Persist the members/permissions table (deployed page only). */
-function persistMembers() {
+/* Persist ONE member row (deployed page only). Row-level security decides
+   what the signed-in person may write; a refusal is shown, never swallowed.
+   Changes made by a non-Superadmin are emailed to the Superadmins. */
+function persistMember(m, what) {
   if (typeof GAS_MODE === 'undefined' || !GAS_MODE) return;
-  try { google.script.run.withFailureHandler(function () {}).saveMembers(MEMBERS); } catch (e) {}
+  var fail = function (r) { Modal.alert('Could not save access', errText(r) + '<br><br>Reload the page to see the saved state.'); };
+  try { google.script.run.withSuccessHandler(function (r) { if (r && r.ok === false) { fail(r); return; } queueAccessNotice(m, what); })
+    .withFailureHandler(fail).saveMember(m); } catch (e) {}
+}
+function removeMember(m) {
+  if (typeof GAS_MODE === 'undefined' || !GAS_MODE) return;
+  var fail = function (r) { Modal.alert('Could not remove member', errText(r) + '<br><br>Reload the page to see the saved state.'); };
+  try { google.script.run.withSuccessHandler(function (r) { if (r && r.ok === false) { fail(r); return; } queueAccessNotice(m, 'Removed'); })
+    .withFailureHandler(fail).removeMember(m.email); } catch (e) {}
+}
+/* One email per member after edits settle (clicking through pillars fires
+   many saves). Superadmins' own changes are not emailed. */
+var _accessNoticeTimers = {}, _accessNoticeWhat = {};
+function queueAccessNotice(m, what) {
+  if (isSuperadmin() || typeof window.__notifyAccess !== 'function') return;
+  var k = m.email; (_accessNoticeWhat[k] = _accessNoticeWhat[k] || []).indexOf(what) < 0 && _accessNoticeWhat[k].push(what);
+  clearTimeout(_accessNoticeTimers[k]);
+  _accessNoticeTimers[k] = setTimeout(function () {
+    var cur = memberByEmail(k), whats = _accessNoticeWhat[k] || []; delete _accessNoticeWhat[k];
+    window.__notifyAccess({ kind: 'member', actorEmail: currentUser.email, actorName: displayName(currentUser.email),
+      memberEmail: k, memberRole: cur ? roleOf(cur) : roleOf(m), changes: whats.join(', '), access: cur ? accessSummary(cur) : '(removed)',
+      link: location.href.split('#')[0] + '#/admin' });
+  }, 5000);
+}
+function accessSummary(m) {
+  if (roleOf(m) === 'Superadmin') return 'Everything (Superadmin)';
+  var out = [];
+  PILLARS.forEach(function (pl) { var v = m.pillars && m.pillars[pl.key]; if (v && v !== 'none') out.push(pl.label + ': ' + v); });
+  Object.keys(m.items || {}).forEach(function (k) {
+    var v = m.items[k]; if (!v) return;
+    var d = DOC.processes.filter(function (p) { return p.process_id === k; })[0];
+    out.push((d ? d.title : k) + ': ' + v);
+  });
+  return out.length ? out.join(' · ') : 'No access yet';
 }
 /* Send a Google Chat card (deployed page only). status = the action that happened. */
 function notifyServer(status, p) {
@@ -5566,7 +5696,7 @@ function notifyPublish(p) {
     pic: p.pic || '', publisherName: nameFromEmail(currentUser.email), publisherEmail: currentUser.email, publishedAt: at,
     link: location.href.split('#')[0] + '#/' + encodeURIComponent(p.pillar || '') + '/' + (slug(p.title) ? slug(p.title) + '~' : '') + encodeURIComponent(p.process_id) });
 }
-function updateAdminLink() { $('adminLink').hidden = !isAdmin(); }
+function updateAdminLink() { $('adminLink').hidden = !canManageAccess(); }
 function wireBrand() {
   var mark = $('brandMark'); if (LOGO_SRC) mark.innerHTML = '<img src="' + LOGO_SRC + '" alt="L&D Playbook" class="hb-topbar__logo">';
   $('brandLink').onclick = function (ev) { ev.preventDefault(); goHome(); };
@@ -5775,16 +5905,29 @@ if (typeof GAS_MODE === 'undefined' || !GAS_MODE) bootApp();
       return {ok:true};
     });
   }
-  function supaMembers(members){
-    if(!(ME&&ME.admin))return Promise.resolve({ok:false,errors:['Chỉ admin']});
-    return SB.from('members').upsert(members||[],{onConflict:'email'}).then(function(res){return res.error?{ok:false,errors:[res.error.message]}:{ok:true};});
+  /* One row at a time: row-level security lets an Admin write only the
+     Custom/Guest rows they added, so a whole-table upsert would be refused. */
+  function supaMember(m){
+    var row={email:(m.email||'').toLowerCase(),name:m.name||'',role:m.role||'Custom',admin:!!m.admin,pillars:m.pillars||{},items:m.items||{},added_by:m.added_by||null};
+    return SB.from('members').upsert(row,{onConflict:'email'}).then(function(res){return res.error?{ok:false,errors:[res.error.message]}:{ok:true};});
+  }
+  function supaRemoveMember(email){
+    return SB.from('members').delete().eq('email',(email||'').toLowerCase()).select('email').then(function(res){
+      if(res.error)return {ok:false,errors:[res.error.message]};
+      if(!res.data||!res.data.length)return {ok:false,errors:['Not allowed to remove this member.']};
+      return {ok:true};});
+  }
+  function supaShareGuest(a){
+    return SB.rpc('share_with_guest',{p_email:a.email,p_process_id:a.processId,p_level:a.level}).then(function(res){return res.error?{ok:false,errors:[res.error.message]}:{ok:true,data:res.data};});
   }
   function runner(){var s=null,f=null;var api={
     withSuccessHandler:function(fn){s=fn;return api;},
     withFailureHandler:function(fn){f=fn;return api;},
     loadData:function(){supaLoad().then(function(r){s&&s(r);}).catch(function(e){f&&f(e);});},
     saveData:function(a,b){supaSave(a,b).then(function(r){s&&s(r);}).catch(function(e){f&&f(e);});},
-    saveMembers:function(m){supaMembers(m).then(function(r){s&&s(r);}).catch(function(e){f&&f(e);});},
+    saveMember:function(m){supaMember(m).then(function(r){s&&s(r);}).catch(function(e){f&&f(e);});},
+    removeMember:function(e1){supaRemoveMember(e1).then(function(r){s&&s(r);}).catch(function(e){f&&f(e);});},
+    shareGuest:function(a){supaShareGuest(a).then(function(r){s&&s(r);}).catch(function(e){f&&f(e);});},
     getHistory:function(pid){supaHistory(pid).then(function(r){s&&s(r);}).catch(function(e){f&&f(e);});},
     deleteData:function(pid){supaDelete(pid).then(function(r){s&&s(r);}).catch(function(e){f&&f(e);});},
     addNotif:function(n){supaAddNotif(n).then(function(r){s&&s(r);}).catch(function(e){f&&f(e);});},
@@ -5796,6 +5939,14 @@ if (typeof GAS_MODE === 'undefined' || !GAS_MODE) bootApp();
   window.__sendApprovalEmail=function(evt){
     var cfg=window.EDL_CFG||{}; if(!cfg.mailerUrl){return;}
     var payload=Object.assign({secret:cfg.mailerSecret||'',event:'approval'},evt||{});
+    try{ fetch(cfg.mailerUrl,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain;charset=UTF-8'},body:JSON.stringify(payload)}); }catch(e){}
+  };
+
+  // Báo cho Superadmin khi Admin đổi quyền / Editor share tài liệu cho Guest.
+  // Người nhận được cố định trong mailer.gs (SUPERADMIN_NOTIFY), không lấy từ client.
+  window.__notifyAccess=function(evt){
+    var cfg=window.EDL_CFG||{}; if(!cfg.mailerUrl){return;}
+    var payload=Object.assign({secret:cfg.mailerSecret||'',event:'access_notice'},evt||{});
     try{ fetch(cfg.mailerUrl,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain;charset=UTF-8'},body:JSON.stringify(payload)}); }catch(e){}
   };
 
