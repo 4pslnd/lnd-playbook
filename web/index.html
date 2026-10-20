@@ -3161,7 +3161,7 @@ function updatePublishButton() {
   if (sa) {
     sa.hidden = (P.status === 'archived' || P.review === 'pending' || P.review === 'approved');
     if (!sa.hidden) {
-      var saDisabled = invalid || !dirty;
+      var saDisabled = invalid;
       sa.style.opacity = saDisabled ? '.4' : '1';
       sa.style.pointerEvents = saDisabled ? 'none' : '';
     }
