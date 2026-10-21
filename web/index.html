@@ -1393,6 +1393,8 @@ textarea{resize:vertical;min-height:60px;line-height:1.5}
 
 <script>
 var GAS_MODE = true;
+var APP_VERSION = '2026.10.20a';
+console.log('[L&D Playbook] v' + APP_VERSION);
 var CURRENT_USER = "";
 var DOC = { processes: [] };
 var MARK_DATA_URI = 'data:image/png;base64,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';
@@ -1617,15 +1619,18 @@ var MARK_DATA_URI = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABDgAAAM7CAYAA
   }
 
   function layout(spec) {
+    var _t0 = Date.now();
     var steps = spec.steps.slice();
     var byId = {}; steps.forEach(function (s) { byId[s.id] = s; });
     var startId = (steps.find(function (s) { return s.type === 'start'; }) || steps[0]).id;
 
     var back = findBackEdges(steps, byId, startId);
+    if (Date.now() - _t0 > 3000) throw new Error('Layout timeout in findBackEdges (' + steps.length + ' steps)');
     /* Rows: transitive-reduction longest path — parallel branches from one step
        line up on the same row, sequences still read top to bottom (see
        assignDepthTR). */
     var depth = assignDepthTR(steps, byId, back, startId);
+    if (Date.now() - _t0 > 3000) throw new Error('Layout timeout in assignDepthTR (' + steps.length + ' steps)');
 
     /* Stagger parallel fork-join: when a non-decision step fans out to 3+
        children that ALL converge to the SAME single target, stack them
@@ -2568,9 +2573,9 @@ function nameFromEmail(e) { if (!e) return ''; return String(e).split('@')[0].sp
 function displayName(email) { if (!email) return ''; var m = memberByEmail(email); return m ? m.name : email; }
 /* Build role-grouped <option>s so a long people list reads by role instead of
    one flat jumble. `members` is the pool; `cur` the selected email. */
-var ROLE_ORDER = ['L&D Head', 'EDL', 'TPM', 'Intern', 'No access', 'Custom'];
+var ROLE_ORDER = ['Superadmin', 'Admin', 'Custom', 'Guest'];
 function roleGroupedOptions(members, cur, includeNone) {
-  var groups = {}; members.forEach(function (m) { var r = m.role || 'Custom'; (groups[r] = groups[r] || []).push(m); });
+  var groups = {}; members.forEach(function (m) { var r = roleOf(m); (groups[r] = groups[r] || []).push(m); });
   var order = Object.keys(groups).sort(function (a, b) {
     var ia = ROLE_ORDER.indexOf(a), ib = ROLE_ORDER.indexOf(b); return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib) || a.localeCompare(b); });
   var html = includeNone ? '<option value="">— none —</option>' : '';
@@ -2611,16 +2616,23 @@ function plural(n, word) { return n + ' ' + word + (n === 1 ? '' : 's'); }
    In real Apps Script this table lives in the Google Sheet; the UI below is the
    admin screen that edits it. */
 var SUPPORT_EMAIL = 'lnd@pizza4ps.com';
-var ROLES = ['L&D Head', 'EDL', 'TPM', 'Intern', 'No access', 'Custom'];
-/* Each role suggests a starting access set when a member is added. Admins can
-   still fine-tune per pillar / per item afterwards (that flips role to Custom). */
+/* Four tiers. Superadmin = the DB `admin` flag (full edit, manage everyone,
+   approve all). Admin = views every pillar, edits only where granted, manages
+   only the members they added (Superadmins are emailed). Custom = L&D team
+   member. Guest = outside the team, view-only on individually shared items. */
+var ROLES = ['Superadmin', 'Admin', 'Custom', 'Guest'];
+var ROLE_RANK = { Guest: 0, Custom: 1, Admin: 2, Superadmin: 3 };
+function roleOf(u) {
+  if (!u) return 'Guest';
+  if (u.admin) return 'Superadmin';
+  if (u.role === 'Admin' || u.role === 'Custom' || u.role === 'Guest') return u.role;
+  return /@pizza4ps\.com$/i.test(u.email || '') ? 'Custom' : 'Guest';
+}
+function roleRank(u) { return ROLE_RANK[roleOf(u)]; }
 function applyRolePreset(m, role) {
-  m.role = role; m.items = m.items || {};
-  if (role === 'L&D Head' || role === 'EDL') { m.admin = true; m.pillars = {}; }
-  else if (role === 'TPM') { m.admin = false; m.pillars = { elearning: 'view', data: 'view', logistics: 'view', training: 'edit' }; }
-  else if (role === 'Intern') { m.admin = false; m.pillars = { elearning: 'view', data: 'view', logistics: 'view', training: 'view' }; }
-  else if (role === 'No access') { m.admin = false; m.pillars = { elearning: 'none', data: 'none', logistics: 'none', training: 'none' }; }
-  /* Custom: leave whatever is there */
+  m.role = role; m.items = m.items || {}; m.pillars = m.pillars || {};
+  m.admin = role === 'Superadmin';
+  if (role === 'Superadmin' || role === 'Guest') m.pillars = {};
 }
 var MEMBERS = [
   { email: 'yen.tran@pizza4ps.com',   name: 'Yen Tran',   role: 'L&D Head', admin: true,  pillars: {}, items: {} },
@@ -2640,9 +2652,12 @@ function accessLevelFor(u, item) {
   if (!u) return 'none';
   if (u.admin) return 'edit';
   if (item.pillar === 'guide') return 'view';   /* Guide pillar is readable by every member */
-  var lvl = (u.pillars && u.pillars[item.pillar]) || 'none';
-  if (item.pillar === CAREER_KEY && u.items && u.items[careerBUKey(item)]) lvl = u.items[careerBUKey(item)];  /* per-BU override */
+  var guest = roleOf(u) === 'Guest';
+  var lvl = guest ? 'none' : ((u.pillars && u.pillars[item.pillar]) || 'none');
+  if (!guest && item.pillar === CAREER_KEY && u.items && u.items[careerBUKey(item)]) lvl = u.items[careerBUKey(item)];  /* per-BU override */
   if (u.items && u.items[item.process_id]) lvl = u.items[item.process_id];  /* single-item exception wins */
+  if (guest && lvl === 'edit') lvl = 'view';    /* guests are always view-only */
+  if (roleOf(u) === 'Admin' && lvl === 'none') lvl = 'view';   /* Admin sees every pillar */
   return lvl;
 }
 function accessLevel(item) { return accessLevelFor(currentUser, item); }
@@ -2651,11 +2666,22 @@ function canCreateIn(pillar) {
   if (currentUser.admin) return true;
   return ((currentUser.pillars && currentUser.pillars[pillar]) || 'none') === 'edit';
 }
-function isAdmin() { return !!currentUser.admin; }
+function isAdmin() { return !!currentUser.admin; }   /* = Superadmin */
+function isSuperadmin() { return roleOf(currentUser) === 'Superadmin'; }
+function canManageAccess() { var r = roleOf(currentUser); return r === 'Superadmin' || r === 'Admin'; }
+/* An Admin may change only Custom/Guest members they added themselves. */
+function canEditMember(m) {
+  if (isSuperadmin()) return true;
+  if (roleOf(currentUser) !== 'Admin' || !m) return false;
+  var r = roleOf(m);
+  return (r === 'Custom' || r === 'Guest') && (m.added_by || '').toLowerCase() === (currentUser.email || '').toLowerCase();
+}
 /* Guest = signed-in but no pillar-wide access; only individually shared items.
    Their home shows just those documents instead of the full pillar catalogue. */
 function isGuest() {
   if (isAdmin()) return false;
+  if (roleOf(currentUser) === 'Admin') return false;
+  if (roleOf(currentUser) === 'Guest') return true;
   var pl = currentUser.pillars || {};
   for (var k in pl) { if (pl[k] === 'view' || pl[k] === 'edit') return false; }
   return true;
@@ -2779,7 +2805,7 @@ function pdfStepHtml(s, num, unit) {
    works offline. A process prints landscape (whole flowchart fit to one page +
    step details after it); an alignment prints portrait (title + body). */
 function exportPDF(p) {
-  if (!canEditItem(p)) { Modal.alert('Editors only', 'Only editors can export a PDF.'); return; }
+  if (!isSuperadmin()) { Modal.alert('Superadmin only', 'Only a Superadmin can export a PDF.'); return; }
   var kind = kindOf(p), isProc = kind === 'process';
   var PW = 1497, PH = 1030;   /* usable A3-landscape px at ~96dpi (12mm margins) */
 
@@ -3156,7 +3182,7 @@ function updatePublishButton() {
   if (sa) {
     sa.hidden = (P.status === 'archived' || P.review === 'pending' || P.review === 'approved');
     if (!sa.hidden) {
-      var saDisabled = invalid || !dirty;
+      var saDisabled = invalid;
       sa.style.opacity = saDisabled ? '.4' : '1';
       sa.style.pointerEvents = saDisabled ? 'none' : '';
     }
@@ -3791,7 +3817,7 @@ function picCountsFor(list) { var c = {}; list.forEach(function (p) { var e = p.
 function picFilterControl(current, countsMap, idp) {
   idp = idp || 'pic';
   var total = 0; Object.keys(countsMap).forEach(function (k) { total += countsMap[k]; });
-  var groups = {}; MEMBERS.forEach(function (m) { var r = m.role || 'Custom'; (groups[r] = groups[r] || []).push(m); });
+  var groups = {}; MEMBERS.forEach(function (m) { var r = roleOf(m); (groups[r] = groups[r] || []).push(m); });
   /* PIC emails that are no longer members (removed) still appear, by saved email */
   var known = {}; MEMBERS.forEach(function (m) { known[m.email] = 1; });
   var removed = Object.keys(countsMap).filter(function (e) { return !known[e]; });
@@ -3826,7 +3852,7 @@ function wirePicFilter(root, onPick, idp) {
    there is no second funnel — just one list revealed by the panel's filter icon). */
 function notiPicInline(current, countsMap) {
   var total = 0; Object.keys(countsMap).forEach(function (k) { total += countsMap[k]; });
-  var groups = {}; MEMBERS.forEach(function (m) { var r = m.role || 'Custom'; (groups[r] = groups[r] || []).push(m); });
+  var groups = {}; MEMBERS.forEach(function (m) { var r = roleOf(m); (groups[r] = groups[r] || []).push(m); });
   var known = {}; MEMBERS.forEach(function (m) { known[m.email] = 1; });
   var removed = Object.keys(countsMap).filter(function (e) { return !known[e]; });
   var h = '<div class="hb-npicbox"><div class="hb-picpop__hd">Filter by PIC</div>' +
@@ -3920,7 +3946,7 @@ function homeByPillar() {
 function homeByRole() {
   var groups = {}, order = [];
   DOC.processes.forEach(function (p) { if (p.pillar === 'guide' || !visibleHome(p)) return;
-    var m = memberByEmail(p.pic || ''); var k = (m && m.role) ? m.role : '(No role)';
+    var m = memberByEmail(p.pic || ''); var k = m ? roleOf(m) : '(No role)';
     if (!groups[k]) { groups[k] = []; order.push(k); }
     groups[k].push(p);
   });
@@ -4158,13 +4184,68 @@ function drawItem() {
   if (kindOf(p) === 'alignment') return drawAlignment(p);
   return drawProcess(p);
 }
-function isReviewer(p) { return p.reviewer && (currentUser.email === p.reviewer || currentUser.admin); }
+/* Approval must go UP: the reviewer outranks the sender and can edit the item
+   (Custom -> Admin/Superadmin, Admin -> Superadmin). Superadmins, having no one
+   above them, may send to another Superadmin (or publish directly). */
+function reviewerCandidates(item) {
+  var me = currentUser, myRank = roleRank(me);
+  return MEMBERS.filter(function (m) {
+    if (m.email === me.email || accessLevelFor(m, item) !== 'edit') return false;
+    var r = roleRank(m);
+    return r > myRank || (myRank === ROLE_RANK.Superadmin && r === myRank);
+  });
+}
+function isReviewer(p) {
+  if (!p.reviewer) return false;
+  if (isSuperadmin()) return true;
+  if (currentUser.email !== p.reviewer || !canEditItem(p)) return false;
+  var sender = memberByEmail(p.updatedBy);
+  return !sender || roleRank(currentUser) > roleRank(sender);
+}
+/* Any editor of a document can share it, view-only, with a Guest (someone
+   outside the L&D team). The server function checks the sharer really can edit
+   this document; every share/unshare is emailed to the Superadmins. */
+function openGuestShare(p) {
+  var guests = MEMBERS.filter(function (m) { return roleOf(m) === 'Guest' && m.items && m.items[p.process_id] === 'view'; });
+  var body = '<p style="margin:0 0 10px;font-size:13px;color:#666">Guests sign in with their email and see <b>only</b> the documents shared with them, view-only. Superadmins are emailed about every share.</p>' +
+    (guests.length ? '<ul class="reviewer-pick">' + guests.map(function (g) {
+      return '<li style="cursor:default"><span class="reviewer-pick__name">' + esc(g.name || g.email) + ' <small style="color:#888">' + esc(g.email) + '</small></span>' +
+        '<button type="button" class="mk-btn adm-remove" data-unshare="' + esc(g.email) + '" style="padding:3px 9px;font-size:11px">Stop sharing</button></li>'; }).join('') + '</ul>'
+      : '<p style="font-size:13px;color:#888">Not shared with any guest yet.</p>') +
+    '<input type="email" class="mm-input" id="guestShareEmail" placeholder="guest@example.com" style="margin-top:10px">';
+  var h = Modal.custom('Share with a guest', body, [
+    { label: 'Close', onClick: function () { Modal.close(); } },
+    { label: 'Share (view only)', primary: true, onClick: function () {
+      var em = (h.querySelector('#guestShareEmail').value || '').trim().toLowerCase();
+      if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(em)) { Modal.alert('Invalid email', 'Please enter a valid email address.'); return; }
+      var ex = memberByEmail(em);
+      if (ex && roleOf(ex) !== 'Guest') { Modal.alert('Already a team member', esc(em) + ' is a ' + esc(roleOf(ex)) + ' member. Ask a Superadmin or Admin to give them access in Manage access.'); return; }
+      doGuestShare(p, em, 'view');
+    } }
+  ]);
+  h.querySelectorAll('[data-unshare]').forEach(function (b) { b.onclick = function () { doGuestShare(p, b.getAttribute('data-unshare'), 'none'); }; });
+}
+function doGuestShare(p, email, level) {
+  var done = function () {
+    var g = memberByEmail(email);
+    if (!g) { g = { email: email, name: nameFromEmail(email), role: 'Guest', admin: false, pillars: {}, items: {}, added_by: currentUser.email }; MEMBERS.push(g); }
+    g.items = g.items || {}; if (level === 'none') delete g.items[p.process_id]; else g.items[p.process_id] = level;
+    if (typeof window.__notifyAccess === 'function') window.__notifyAccess({ kind: 'guest_share', actorEmail: currentUser.email, actorName: displayName(currentUser.email),
+      memberEmail: email, memberRole: 'Guest', changes: level === 'none' ? 'Stopped sharing' : 'Shared (view only)', access: p.title,
+      link: location.href.split('#')[0] + '#/' + encodeURIComponent(p.pillar || '') + '/' + (slug(p.title) ? slug(p.title) + '~' : '') + encodeURIComponent(p.process_id) });
+    Modal.close(); openGuestShare(p);
+  };
+  if (typeof GAS_MODE === 'undefined' || !GAS_MODE) { done(); return; }
+  google.script.run.withSuccessHandler(function (r) { if (r && r.ok === false) { Modal.alert('Could not share', errText(r)); return; } done(); })
+    .withFailureHandler(function (e) { Modal.alert('Could not share', esc((e && e.message) || 'Please try again.')); }).shareGuest({ email: email, processId: p.process_id, level: level });
+}
 function heroFor(p, flowLabelHtml) {
   var kind = kindOf(p), edit = canEditItem(p);
   var histBtn = edit ? '<button class="mk-btn hb-history" id="histBtn" title="See and restore earlier versions">&#8635; History</button>' : '';
   var delBtn = edit ? '<button class="mk-btn adm-remove" id="delProcBtn" title="Delete (move to Trash)">🗑 Delete</button>' : '';
   var moveBtn = isAdmin() ? '<button class="mk-btn" id="moveProcBtn" title="Move to another pillar">⇄ Move</button>' : '';
-  var pdfBtn = edit ? '<button class="mk-btn" id="pdfBtn" title="Export this document as a PDF">⭳ Export PDF</button>' : '';
+  var pdfBtn = isSuperadmin() ? '<button class="mk-btn" id="pdfBtn" title="Export this document as a PDF">⭳ Export PDF</button>' : '';
+  var shareBtn = edit ? '<button class="mk-btn" id="guestShareBtn" title="Share this document, view-only, with someone outside the team">&#128101; Share with guest</button>' : '';
   var editBtn = edit ? '<button class="mk-btn mk-btn--primary hb-editbtn" id="editProcBtn">✎ Edit this ' + KIND_LABEL[kind].toLowerCase() + '</button>' : '';
   var reviewChip = '', approveBtns = '';
   if (p.review === 'pending') {
@@ -4186,7 +4267,7 @@ function heroFor(p, flowLabelHtml) {
   return draftBanner + '<section class="proc-hero"><div class="proc-hero__top">' +
     '<span class="mk-status-pill mk-status-pill--' + p.status + '">' + p.status + '</span>' +
     '<span class="kind-tag kind-tag--' + kind + '">' + KIND_LABEL[kind] + '</span>' + reviewChip +
-    '<div class="mk-grow"></div>' + approveBtns + pdfBtn + moveBtn + histBtn + delBtn + editBtn + '</div>' +
+    '<div class="mk-grow"></div>' + approveBtns + pdfBtn + shareBtn + moveBtn + histBtn + delBtn + editBtn + '</div>' +
     '<h1 class="hb-h1">' + esc(p.title) + '</h1>' +
     '<p class="hb-lede">' + esc(p.subtitle || '') + '</p>' +
     (flowLabelHtml || '') +
@@ -4203,6 +4284,7 @@ function wireItemHeader(p) {
   var db = $('delProcBtn'); if (db) db.onclick = function () { softDeleteItem(p); };
   var mv = $('moveProcBtn'); if (mv) mv.onclick = function () { moveItem(p); };
   var pb = $('pdfBtn'); if (pb) pb.onclick = function () { exportPDF(p); };
+  var gsb = $('guestShareBtn'); if (gsb) gsb.onclick = function () { openGuestShare(p); };
   var hb = $('histBtn'); if (hb) hb.onclick = function () { openHistory(p); };
   var a = $('approveBtn'); if (a) a.onclick = function () {
     var prev = p.review, prb = p.reviewedBy, pra = p.reviewedAt, prc = p.reviewComment;
@@ -4437,10 +4519,12 @@ function renderProcDiagram(p) {
        re-render (sub-step toggle) → keep whatever zoom the viewer is currently at */
     var z = (keepZoom && siteHandle) ? siteHandle.scale() : null;
     try {
+      console.time('layout:' + p.title);
       var g = AutoLayout.layout({ title: p.title, subtitle: p.subtitle, steps: flow.steps, lanes: flow.lanes || [] });
+      console.timeEnd('layout:' + p.title);
       siteHandle = DiagramRender.render($('sdiag'), g, { selected: sel, onPick: pick, zoom: z, unitAb: unitOf(p).ab, hint: 'Click a step to see full details, drag to move',
         onToggle: function (id) { var st = steps.filter(function (s) { return s.id === id; })[0]; if (st) { st._open = !st._open; renderDiag(true); } } });
-    } catch (err) { $('sdiag').innerHTML = '<div class="mk-empty">Diagram unavailable.</div>'; }
+    } catch (err) { console.error('Diagram error:', err); $('sdiag').innerHTML = '<div class="mk-empty">Diagram unavailable.</div>'; }
   }
   function pick(id) { sel = id; if (siteHandle) siteHandle.select(id);
     $('sdetail').innerHTML = renderDetailCard(steps.filter(function (s) { return s.id === id; })[0], unitOf(p)); }
@@ -4613,11 +4697,10 @@ function drawEditorBar() {
   $('pkind').disabled = true;            // Type is fixed once chosen at creation
   $('pstatus').innerHTML = STATUSES.map(function (s) { return '<option value="' + s + '"' + (P.status === s ? ' selected' : '') + '>' + s + '</option>'; }).join('');
   var picSel = $('ppic');
-  picSel.innerHTML = roleGroupedOptions(MEMBERS, P.pic, true) +
+  picSel.innerHTML = roleGroupedOptions(MEMBERS.filter(function (m) { return roleOf(m) !== 'Guest' || m.email === P.pic; }), P.pic, true) +
     (P.pic && !memberByEmail(P.pic) ? '<option value="' + esc(P.pic) + '" selected>' + esc(P.pic) + ' (removed)</option>' : '');
   var revSel = $('previewer');
-  var REVIEWER_ROLES = { 'L&D Head': 1, 'EDL': 1, 'TPM': 1 };
-  var reviewers = MEMBERS.filter(function (m) { return REVIEWER_ROLES[m.role]; });
+  var reviewers = reviewerCandidates(P);
   if (P.reviewer && !reviewers.some(function (m) { return m.email === P.reviewer; })) { var ex = memberByEmail(P.reviewer); if (ex) reviewers = reviewers.concat([ex]); }
   revSel.innerHTML = roleGroupedOptions(reviewers, P.reviewer, true) +
     (P.reviewer && !memberByEmail(P.reviewer) ? '<option value="' + esc(P.reviewer) + '" selected>' + esc(P.reviewer) + ' (removed)</option>' : '');
@@ -5045,6 +5128,7 @@ var BRAND_COLORS = [
 /* Export an alignment document. PDF opens a clean print window (Save as PDF);
    Word writes a .doc file the browser downloads, editable in Microsoft Word. */
 function exportAlignmentPDF(p) {
+  if (!isSuperadmin()) { Modal.alert('Superadmin only', 'Only a Superadmin can export a PDF.'); return; }
   var w = window.open('', '_blank');
   if (!w) { Modal.alert('Pop-up blocked', 'Please allow pop-ups for this site, then export again.'); return; }
   var css = 'body{font-family:Georgia,"Century Std",serif;color:#1B2233;line-height:1.7;max-width:760px;margin:36px auto;padding:0 24px}' +
@@ -5292,7 +5376,9 @@ function wireRichToolbar(ed) {
   document.addEventListener('mouseup', function () { if (rz) { rz = null; document.body.style.cursor = ''; sync(); } });
   var exBtn = $('alExport'), exMenu = $('alExportMenu');
   if (exBtn && exMenu) {
-    exBtn.onclick = function (e) { e.stopPropagation(); exMenu.hidden = !exMenu.hidden; };
+    exBtn.onclick = function (e) { e.stopPropagation();
+      var pdfOpt = exMenu.querySelector('[data-exp="pdf"]'); if (pdfOpt) pdfOpt.hidden = !isSuperadmin();
+      exMenu.hidden = !exMenu.hidden; };
     exMenu.querySelectorAll('[data-exp]').forEach(function (b) { b.onclick = function () {
       exMenu.hidden = true; if (b.getAttribute('data-exp') === 'pdf') exportAlignmentPDF(P); else exportAlignmentWord(P); }; });
     document.addEventListener('click', function (e) { if (exMenu && !exMenu.hidden && (!e.target.closest || !e.target.closest('.al-export'))) exMenu.hidden = true; });
@@ -5391,13 +5477,11 @@ function wireEditorChrome() {
   var saBtn = $('sendApprovalBtn'); if (saBtn) {
     saBtn.onclick = function () {
       if (!P) return;
-      var candidates = MEMBERS.filter(function (m) {
-        return m.email !== currentUser.email && accessLevelFor(m, P) === 'edit';
-      });
-      if (!candidates.length) { Modal.alert('No reviewers', 'No other members have edit access to this pillar.'); return; }
+      var candidates = reviewerCandidates(P);
+      if (!candidates.length) { Modal.alert('No reviewers', 'No one with a higher role (Admin or Superadmin) has edit access to this pillar yet. Ask a Superadmin to grant it in Manage access.'); return; }
       var body = '<p style="margin:0 0 10px;font-size:13px;color:#666">Select a reviewer to send for approval:</p><ul class="reviewer-pick">' +
         candidates.map(function (m) {
-          return '<li data-email="' + esc(m.email) + '"><span class="reviewer-pick__name">' + esc(m.name || m.email) + '</span><span class="reviewer-pick__role">' + esc(m.role || '') + '</span></li>';
+          return '<li data-email="' + esc(m.email) + '"><span class="reviewer-pick__name">' + esc(m.name || m.email) + '</span><span class="reviewer-pick__role">' + esc(roleOf(m)) + '</span></li>';
         }).join('') + '</ul>';
       var h = Modal.custom('Send for approval', body, [{ label: 'Cancel', onClick: function () { Modal.close(); } }]);
       h.querySelectorAll('.reviewer-pick li').forEach(function (li) {
@@ -5422,10 +5506,11 @@ document.addEventListener('keydown', function (e) {
 /* ============================ admin: manage access ============================ */
 var adminSel = null, admExpanded = {}, admQuery = '';
 function drawAdmin() {
-  if (!isAdmin()) { goHome(); return; }
+  if (!canManageAccess()) { goHome(); return; }
   var S = $('adminScreen');
   if (!adminSel) adminSel = MEMBERS[0].email;
   var m = memberByEmail(adminSel) || MEMBERS[0];
+  var can = canEditMember(m);
   var itemsByPillar = {};
   PILLARS.forEach(function (pl) { itemsByPillar[pl.key] = DOC.processes.filter(function (p) { return p.pillar === pl.key; }); });
 
@@ -5433,35 +5518,51 @@ function drawAdmin() {
     '<button class="mk-btn mk-btn--primary" id="admAdd" style="padding:5px 10px;font-size:11.5px">+ Add</button></div>' +
     '<input class="adm-search" id="admSearch" placeholder="Search people…" value="' + esc(admQuery) + '">' +
     '<div class="adm-members">' + MEMBERS.map(function (u) {
-      return '<button class="adm-member' + (u.email === adminSel ? ' adm-member--on' : '') + '" data-mem="' + esc(u.email) + '" data-search="' + esc(((u.name || '') + ' ' + u.email + ' ' + (u.role || '')).toLowerCase()) + '">' +
-        '<span class="pic-avatar">' + esc((u.name[0] || '?').toUpperCase()) + '</span>' +
-        '<span class="adm-member__col"><b>' + esc(u.name) + '</b><em>' + esc(u.email) + '</em></span>' +
-        '<span class="adm-badge' + (u.admin ? ' adm-badge--admin' : '') + '">' + esc(u.role || 'Custom') + '</span></button>';
+      var r = roleOf(u);
+      return '<button class="adm-member' + (u.email === adminSel ? ' adm-member--on' : '') + '" data-mem="' + esc(u.email) + '" data-search="' + esc(((u.name || '') + ' ' + u.email + ' ' + r).toLowerCase()) + '">' +
+        '<span class="pic-avatar">' + esc(((u.name || u.email)[0] || '?').toUpperCase()) + '</span>' +
+        '<span class="adm-member__col"><b>' + esc(u.name || u.email) + '</b><em>' + esc(u.email) + '</em></span>' +
+        '<span class="adm-badge' + (r === 'Superadmin' || r === 'Admin' ? ' adm-badge--admin' : '') + '">' + esc(r) + '</span></button>';
     }).join('') + '</div></div>';
 
-  /* Segmented None/View/Edit control. withDefault adds a "Default" state (no
-     override — follow the pillar) used by per-document and per-BU rows. */
-  function accSeg(attr, cur, withDefault) {
-    var opts = withDefault ? [['', 'Default'], ['none', 'None'], ['view', 'View'], ['edit', 'Edit']]
-                           : [['none', 'None'], ['view', 'View'], ['edit', 'Edit']];
-    cur = cur == null ? (withDefault ? '' : 'none') : cur;
-    return '<span class="acc-seg" data-acc="' + esc(attr) + '">' + opts.map(function (o) {
+  /* Segmented control. withDefault adds a "Default" state (no override — follow
+     the pillar). guestOnly limits the choices to No / View for a Guest. */
+  function accSeg(attr, cur, withDefault, guestOnly) {
+    var opts = guestOnly ? [['', 'No'], ['view', 'View']]
+      : withDefault ? [['', 'Default'], ['none', 'None'], ['view', 'View'], ['edit', 'Edit']]
+                    : [['none', 'None'], ['view', 'View'], ['edit', 'Edit']];
+    cur = cur == null ? (withDefault || guestOnly ? '' : 'none') : cur;
+    return '<span class="acc-seg' + (can ? '' : ' acc-seg--ro') + '" data-acc="' + esc(attr) + '"' + (can ? '' : ' style="opacity:.55;pointer-events:none"') + '>' + opts.map(function (o) {
       var on = cur === o[0];
       return '<button type="button" data-v="' + o[0] + '" class="acc-seg__b' + (on ? ' is-on' + (o[0] === 'view' ? ' acc--view' : (o[0] === 'edit' ? ' acc--edit' : '')) : '') + '">' + o[1] + '</button>';
     }).join('') + '</span>';
   }
 
+  var mRole = roleOf(m);
+  var roleChoices = isSuperadmin() ? ROLES : ['Custom', 'Guest'];
+  if (roleChoices.indexOf(mRole) < 0) roleChoices = [mRole].concat(roleChoices);
   var detail = '<div class="adm-detail"><div class="adm-detail__head">' +
-    '<span class="pic-avatar">' + esc((m.name[0] || '?').toUpperCase()) + '</span>' +
-    '<div style="flex:1"><input id="admName" class="adm-name" value="' + esc(m.name) + '"><div class="adm-detail__email">' + esc(m.email) + '</div></div>' +
-    (m.email === currentUser.email ? '' : '<button class="mk-btn adm-remove" id="admRemove">Remove</button>') + '</div>' +
-    '<div class="adm-row adm-row--role"><span><b>Role</b> — sets a suggested access</span><select id="admRole">' +
-      ROLES.map(function (r) { return '<option value="' + esc(r) + '"' + (m.role === r ? ' selected' : '') + '>' + esc(r) + '</option>'; }).join('') + '</select></div>';
+    '<span class="pic-avatar">' + esc(((m.name || m.email)[0] || '?').toUpperCase()) + '</span>' +
+    '<div style="flex:1"><input id="admName" class="adm-name" value="' + esc(m.name || '') + '"' + (can ? '' : ' readonly') + '><div class="adm-detail__email">' + esc(m.email) +
+      (m.added_by ? ' · added by ' + esc(displayName(m.added_by)) : '') + '</div></div>' +
+    (m.email === currentUser.email || !can ? '' : '<button class="mk-btn adm-remove" id="admRemove">Remove</button>') + '</div>' +
+    '<div class="adm-row adm-row--role"><span><b>Role</b></span><select id="admRole"' + (can && m.email !== currentUser.email ? '' : ' disabled') + '>' +
+      roleChoices.map(function (r) { return '<option value="' + esc(r) + '"' + (mRole === r ? ' selected' : '') + '>' + esc(r) + '</option>'; }).join('') + '</select></div>';
+  if (!can) detail += '<p class="adm-hint" style="background:#FFF6E5">View only — as an Admin you can change only the Custom / Guest members you added yourself. Ask a Superadmin to change this person.</p>';
 
-  if (m.admin) {
-    detail += '<p class="adm-hint"><b>' + esc(m.role) + '</b> — full view &amp; edit on everything, and can manage access. Change the role to set access per pillar.</p>';
+  if (mRole === 'Superadmin') {
+    detail += '<p class="adm-hint"><b>Superadmin</b> — full view &amp; edit on everything, approves everything, manages access and exports PDF.</p>';
+  } else if (mRole === 'Guest') {
+    detail += '<div class="adm-sub">Shared documents <span>— a Guest sees only the documents set to “View” here (view-only).</span></div>';
+    PILLARS.filter(function (pl) { return pl.key !== 'guide'; }).forEach(function (pl) {
+      var items = (itemsByPillar[pl.key] || []).filter(function (p) { return !p.deleted; });
+      if (!items.length) return;
+      detail += '<div class="acc-row"><span class="acc-name">' + esc(pl.label) + '</span></div><div class="acc-subrows">' + items.map(function (it) {
+        return '<div class="acc-subrow"><span class="acc-subname">' + esc(it.title) + '</span>' + accSeg('item:' + it.process_id, m.items && m.items[it.process_id], false, true) + '</div>'; }).join('') + '</div>';
+    });
   } else {
     detail += '<div class="adm-sub">Access per pillar <span>— “View” sees published, “Edit” can change &amp; publish. Expand to override single documents.</span></div>';
+    if (mRole === 'Admin') detail += '<p class="adm-hint">An <b>Admin</b> can always view every pillar. Set <b>Edit</b> where they may change documents and approve submissions.</p>';
     /* normal pillars: pillar-level segmented control + optional per-document overrides */
     PILLARS.filter(function (pl) { return pl.key !== 'guide' && pl.key !== CAREER_KEY; }).forEach(function (pl) {
       detail += '<div class="acc-row"><span class="acc-name">' + esc(pl.label) + '</span>' + accSeg('pillar:' + pl.key, m.pillars && m.pillars[pl.key]) + '</div>';
@@ -5481,8 +5582,9 @@ function drawAdmin() {
         return '<div class="acc-subrow"><span class="acc-subname">' + flag + ' ' + esc(c) + ' · ' + esc(bu) + '</span>' + accSeg('bu:' + key, m.items && m.items['@career:' + key], true) + '</div>'; }).join('');
     }).join('') + '</div>';
     detail += '<div class="acc-guide">User guide — everyone with an account can view it.</div>';
-    detail += '<p class="adm-hint">Tip: set each pillar’s level, then override a single document or a business unit only where it should differ. Any change here switches the role to <b>Custom</b>.</p>';
+    detail += '<p class="adm-hint">Tip: set each pillar’s level, then override a single document or a business unit only where it should differ.</p>';
   }
+  if (!isSuperadmin()) detail += '<p class="adm-hint">Changes you make here are emailed to the Superadmins.</p>';
   detail += '</div>';
 
   S.innerHTML = '<section class="toc-hero"><h1 class="hb-h1">Manage access</h1>' +
@@ -5494,50 +5596,85 @@ function drawAdmin() {
     if (!email) return; email = email.trim().toLowerCase();
     if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) { Modal.alert('Invalid email', 'Please enter a valid email address.'); return; }
     if (memberByEmail(email)) { Modal.alert('Already a member', email + ' is already on the list.'); return; }
-    if (!/@pizza4ps\.com$/.test(email)) {   /* external → guest with no pillar access; share items individually */
-      Modal.confirm('Add external guest?', 'Add <b>' + esc(email) + '</b> as an external <b>guest</b> with no access yet. You then share individual documents with them below (“Access to specific items”, set to View). They sign in with this email and see only what you share.', function () {
-        var nu = { email: email, name: nameFromEmail(email), role: 'Guest', admin: false, pillars: {}, items: {} };
-        MEMBERS.push(nu); adminSel = email; persistMembers(); wireRoleSwitch(); drawAdmin();
-      }, { okLabel: 'Add guest' });
+    function add(role) {
+      var nu = { email: email, name: nameFromEmail(email), role: role, admin: false, pillars: {}, items: {}, added_by: currentUser.email };
+      applyRolePreset(nu, role); MEMBERS.push(nu); adminSel = email;
+      persistMember(nu, 'Added as ' + role); wireRoleSwitch(); drawAdmin();
+    }
+    if (!/@pizza4ps\.com$/.test(email)) {   /* external → Guest; share items individually */
+      Modal.confirm('Add external guest?', 'Add <b>' + esc(email) + '</b> as a <b>Guest</b> with no access yet. Then set the documents they may view below. They sign in with this email and see only what is shared.', function () { add('Guest'); }, { okLabel: 'Add guest' });
       return;
     }
-    Modal.choice('Role for ' + email, 'The display name is taken from the email (you can edit it later). Pick a starting access level:',
-      ROLES.filter(function (r) { return r !== 'Custom'; }).map(function (r) { return { label: r, value: r }; }), function (role) {
-        if (!role) return;
-        var nu = { email: email, name: nameFromEmail(email), role: role, admin: false, pillars: {}, items: {} };
-        applyRolePreset(nu, role); MEMBERS.push(nu); adminSel = email; persistMembers(); wireRoleSwitch();
-        Modal.alert('Member added', 'Added <b>' + esc(email) + '</b> (' + esc(nameFromEmail(email)) + ') with <b>' + esc(role) + '</b> access. They can sign in with their company email.');
-        drawAdmin();
-      });
+    var choices = isSuperadmin() ? ROLES : ['Custom', 'Guest'];
+    Modal.choice('Role for ' + email, 'The display name is taken from the email (you can edit it later). Pick a role, then set pillar access:',
+      choices.map(function (r) { return { label: r, value: r }; }), function (role) { if (role) add(role); });
   }); };
   var rm = $('admRemove'); if (rm) rm.onclick = function () { Modal.confirm('Remove member?', esc(m.email) + ' will lose all access.', function () {
-    MEMBERS = MEMBERS.filter(function (u) { return u.email !== m.email; }); adminSel = MEMBERS[0] && MEMBERS[0].email; persistMembers(); wireRoleSwitch(); drawAdmin(); }, { danger: true, okLabel: 'Remove' }); };
-  var nmEl = $('admName'); if (nmEl) nmEl.onchange = function () { m.name = nmEl.value.trim() || m.name; persistMembers(); wireRoleSwitch(); drawAdmin(); };
-  var roleEl = $('admRole'); if (roleEl) roleEl.onchange = function () { applyRolePreset(m, roleEl.value); persistMembers(); wireRoleSwitch(); drawAdmin(); };
+    MEMBERS = MEMBERS.filter(function (u) { return u.email !== m.email; }); adminSel = MEMBERS[0] && MEMBERS[0].email;
+    removeMember(m); wireRoleSwitch(); drawAdmin(); }, { danger: true, okLabel: 'Remove' }); };
+  if (!can) { var srch0 = $('admSearch'); if (srch0) srch0.oninput = searchMembers; return; }
+  var nmEl = $('admName'); if (nmEl) nmEl.onchange = function () { m.name = nmEl.value.trim() || m.name; persistMember(m, 'Renamed'); wireRoleSwitch(); drawAdmin(); };
+  var roleEl = $('admRole'); if (roleEl) roleEl.onchange = function () { applyRolePreset(m, roleEl.value); persistMember(m, 'Role set to ' + roleEl.value); wireRoleSwitch(); drawAdmin(); };
   S.querySelectorAll('.acc-seg__b').forEach(function (btn) { btn.onclick = function () {
     var a = btn.parentNode.getAttribute('data-acc'), v = btn.getAttribute('data-v');
-    if (a.indexOf('pillar:') === 0) { m.pillars = m.pillars || {}; m.pillars[a.slice(7)] = v; m.role = 'Custom'; }
-    else if (a.indexOf('item:') === 0) { m.items = m.items || {}; var ik = a.slice(5); if (v === '') delete m.items[ik]; else m.items[ik] = v; m.role = 'Custom'; }
-    else if (a.indexOf('bu:') === 0) { m.items = m.items || {}; var bk = '@career:' + a.slice(3); if (v === '') delete m.items[bk]; else m.items[bk] = v; m.role = 'Custom'; }
-    persistMembers(); drawAdmin();
+    if (a.indexOf('pillar:') === 0) { m.pillars = m.pillars || {}; m.pillars[a.slice(7)] = v; }
+    else if (a.indexOf('item:') === 0) { m.items = m.items || {}; var ik = a.slice(5); if (v === '') delete m.items[ik]; else m.items[ik] = v; }
+    else if (a.indexOf('bu:') === 0) { m.items = m.items || {}; var bk = '@career:' + a.slice(3); if (v === '') delete m.items[bk]; else m.items[bk] = v; }
+    persistMember(m, 'Access changed'); drawAdmin();
   }; });
   S.querySelectorAll('[data-exp]').forEach(function (x) { x.onclick = function () {
     var k = x.getAttribute('data-exp'); admExpanded[k] = !admExpanded[k]; drawAdmin(); }; });
-  var srch = $('admSearch'); if (srch) srch.oninput = function () {
-    admQuery = srch.value; var q = admQuery.trim().toLowerCase();
+  var srch = $('admSearch'); if (srch) srch.oninput = searchMembers;
+  function searchMembers() {
+    admQuery = $('admSearch').value; var q = admQuery.trim().toLowerCase();
     S.querySelectorAll('.adm-member').forEach(function (b) { b.style.display = (!q || (b.getAttribute('data-search') || '').indexOf(q) >= 0) ? '' : 'none'; });
-  };
+  }
 }
 
 /* ------------------------------ chrome: role, brand ------------------------------ */
 function wireRoleSwitch() {
-  var who = $('whoami'); if (who) who.textContent = currentUser.email + (currentUser.role ? ' · ' + currentUser.role : '');
+  var who = $('whoami'); if (who) who.textContent = currentUser.email + ' · ' + roleOf(currentUser);
   updateAdminLink();
 }
-/* Persist the members/permissions table (deployed page only). */
-function persistMembers() {
+/* Persist ONE member row (deployed page only). Row-level security decides
+   what the signed-in person may write; a refusal is shown, never swallowed.
+   Changes made by a non-Superadmin are emailed to the Superadmins. */
+function persistMember(m, what) {
   if (typeof GAS_MODE === 'undefined' || !GAS_MODE) return;
-  try { google.script.run.withFailureHandler(function () {}).saveMembers(MEMBERS); } catch (e) {}
+  var fail = function (r) { Modal.alert('Could not save access', errText(r) + '<br><br>Reload the page to see the saved state.'); };
+  try { google.script.run.withSuccessHandler(function (r) { if (r && r.ok === false) { fail(r); return; } queueAccessNotice(m, what); })
+    .withFailureHandler(fail).saveMember(m); } catch (e) {}
+}
+function removeMember(m) {
+  if (typeof GAS_MODE === 'undefined' || !GAS_MODE) return;
+  var fail = function (r) { Modal.alert('Could not remove member', errText(r) + '<br><br>Reload the page to see the saved state.'); };
+  try { google.script.run.withSuccessHandler(function (r) { if (r && r.ok === false) { fail(r); return; } queueAccessNotice(m, 'Removed'); })
+    .withFailureHandler(fail).removeMember(m.email); } catch (e) {}
+}
+/* One email per member after edits settle (clicking through pillars fires
+   many saves). Superadmins' own changes are not emailed. */
+var _accessNoticeTimers = {}, _accessNoticeWhat = {};
+function queueAccessNotice(m, what) {
+  if (isSuperadmin() || typeof window.__notifyAccess !== 'function') return;
+  var k = m.email; (_accessNoticeWhat[k] = _accessNoticeWhat[k] || []).indexOf(what) < 0 && _accessNoticeWhat[k].push(what);
+  clearTimeout(_accessNoticeTimers[k]);
+  _accessNoticeTimers[k] = setTimeout(function () {
+    var cur = memberByEmail(k), whats = _accessNoticeWhat[k] || []; delete _accessNoticeWhat[k];
+    window.__notifyAccess({ kind: 'member', actorEmail: currentUser.email, actorName: displayName(currentUser.email),
+      memberEmail: k, memberRole: cur ? roleOf(cur) : roleOf(m), changes: whats.join(', '), access: cur ? accessSummary(cur) : '(removed)',
+      link: location.href.split('#')[0] + '#/admin' });
+  }, 5000);
+}
+function accessSummary(m) {
+  if (roleOf(m) === 'Superadmin') return 'Everything (Superadmin)';
+  var out = [];
+  PILLARS.forEach(function (pl) { var v = m.pillars && m.pillars[pl.key]; if (v && v !== 'none') out.push(pl.label + ': ' + v); });
+  Object.keys(m.items || {}).forEach(function (k) {
+    var v = m.items[k]; if (!v) return;
+    var d = DOC.processes.filter(function (p) { return p.process_id === k; })[0];
+    out.push((d ? d.title : k) + ': ' + v);
+  });
+  return out.length ? out.join(' · ') : 'No access yet';
 }
 /* Send a Google Chat card (deployed page only). status = the action that happened. */
 function notifyServer(status, p) {
@@ -5559,7 +5696,7 @@ function notifyPublish(p) {
     pic: p.pic || '', publisherName: nameFromEmail(currentUser.email), publisherEmail: currentUser.email, publishedAt: at,
     link: location.href.split('#')[0] + '#/' + encodeURIComponent(p.pillar || '') + '/' + (slug(p.title) ? slug(p.title) + '~' : '') + encodeURIComponent(p.process_id) });
 }
-function updateAdminLink() { $('adminLink').hidden = !isAdmin(); }
+function updateAdminLink() { $('adminLink').hidden = !canManageAccess(); }
 function wireBrand() {
   var mark = $('brandMark'); if (LOGO_SRC) mark.innerHTML = '<img src="' + LOGO_SRC + '" alt="L&D Playbook" class="hb-topbar__logo">';
   $('brandLink').onclick = function (ev) { ev.preventDefault(); goHome(); };
@@ -5768,16 +5905,29 @@ if (typeof GAS_MODE === 'undefined' || !GAS_MODE) bootApp();
       return {ok:true};
     });
   }
-  function supaMembers(members){
-    if(!(ME&&ME.admin))return Promise.resolve({ok:false,errors:['Chỉ admin']});
-    return SB.from('members').upsert(members||[],{onConflict:'email'}).then(function(res){return res.error?{ok:false,errors:[res.error.message]}:{ok:true};});
+  /* One row at a time: row-level security lets an Admin write only the
+     Custom/Guest rows they added, so a whole-table upsert would be refused. */
+  function supaMember(m){
+    var row={email:(m.email||'').toLowerCase(),name:m.name||'',role:m.role||'Custom',admin:!!m.admin,pillars:m.pillars||{},items:m.items||{},added_by:m.added_by||null};
+    return SB.from('members').upsert(row,{onConflict:'email'}).then(function(res){return res.error?{ok:false,errors:[res.error.message]}:{ok:true};});
+  }
+  function supaRemoveMember(email){
+    return SB.from('members').delete().eq('email',(email||'').toLowerCase()).select('email').then(function(res){
+      if(res.error)return {ok:false,errors:[res.error.message]};
+      if(!res.data||!res.data.length)return {ok:false,errors:['Not allowed to remove this member.']};
+      return {ok:true};});
+  }
+  function supaShareGuest(a){
+    return SB.rpc('share_with_guest',{p_email:a.email,p_process_id:a.processId,p_level:a.level}).then(function(res){return res.error?{ok:false,errors:[res.error.message]}:{ok:true,data:res.data};});
   }
   function runner(){var s=null,f=null;var api={
     withSuccessHandler:function(fn){s=fn;return api;},
     withFailureHandler:function(fn){f=fn;return api;},
     loadData:function(){supaLoad().then(function(r){s&&s(r);}).catch(function(e){f&&f(e);});},
     saveData:function(a,b){supaSave(a,b).then(function(r){s&&s(r);}).catch(function(e){f&&f(e);});},
-    saveMembers:function(m){supaMembers(m).then(function(r){s&&s(r);}).catch(function(e){f&&f(e);});},
+    saveMember:function(m){supaMember(m).then(function(r){s&&s(r);}).catch(function(e){f&&f(e);});},
+    removeMember:function(e1){supaRemoveMember(e1).then(function(r){s&&s(r);}).catch(function(e){f&&f(e);});},
+    shareGuest:function(a){supaShareGuest(a).then(function(r){s&&s(r);}).catch(function(e){f&&f(e);});},
     getHistory:function(pid){supaHistory(pid).then(function(r){s&&s(r);}).catch(function(e){f&&f(e);});},
     deleteData:function(pid){supaDelete(pid).then(function(r){s&&s(r);}).catch(function(e){f&&f(e);});},
     addNotif:function(n){supaAddNotif(n).then(function(r){s&&s(r);}).catch(function(e){f&&f(e);});},
@@ -5789,6 +5939,14 @@ if (typeof GAS_MODE === 'undefined' || !GAS_MODE) bootApp();
   window.__sendApprovalEmail=function(evt){
     var cfg=window.EDL_CFG||{}; if(!cfg.mailerUrl){return;}
     var payload=Object.assign({secret:cfg.mailerSecret||'',event:'approval'},evt||{});
+    try{ fetch(cfg.mailerUrl,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain;charset=UTF-8'},body:JSON.stringify(payload)}); }catch(e){}
+  };
+
+  // Báo cho Superadmin khi Admin đổi quyền / Editor share tài liệu cho Guest.
+  // Người nhận được cố định trong mailer.gs (SUPERADMIN_NOTIFY), không lấy từ client.
+  window.__notifyAccess=function(evt){
+    var cfg=window.EDL_CFG||{}; if(!cfg.mailerUrl){return;}
+    var payload=Object.assign({secret:cfg.mailerSecret||'',event:'access_notice'},evt||{});
     try{ fetch(cfg.mailerUrl,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain;charset=UTF-8'},body:JSON.stringify(payload)}); }catch(e){}
   };
 

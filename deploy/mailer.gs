@@ -4,6 +4,8 @@
  * The web app receives POSTs from the Playbook and:
  *   - event "approval"  → emails the reviewer (CC the L&D group) + posts a Chat card
  *   - event "published" → posts a Chat card + emails the publish group
+ *   - event "access_notice" → emails the Superadmins (SUPERADMIN_NOTIFY) when an Admin
+ *     changes someone's access, or an editor shares a document with a Guest
  *
  * DEPLOY (do this every time you change the code):
  *   1. Paste this whole file into the Apps Script project (script.google.com).
@@ -22,6 +24,7 @@ var CHAT_WEBHOOK    = 'PUT-YOUR-GOOGLE-CHAT-INCOMING-WEBHOOK-URL';   // Space �
 var CC_APPROVAL     = 'lnd.edl@pizza4ps.com';   // CC on approval emails ('' to disable)
 var SENDER_NAME     = 'L&D Playbook';
 var ALLOWED_DOMAINS = ['pizza4ps.com'];         // only send email to addresses on these domains
+var SUPERADMIN_NOTIFY = ['nguyen.che@pizza4ps.com', 'binh.nguyen@pizza4ps.com'];  // access-change emails go here (fixed server-side)
 
 function doGet() { return _json({ ok: true, service: 'ld-playbook-mailer' }); }   // health check
 
@@ -32,6 +35,7 @@ function doPost(e) {
     if (!SHARED_SECRET || body.secret !== SHARED_SECRET) return _json({ ok: false, error: 'bad secret' });
     if (body.event === 'approval')  return _handleApproval(body);
     if (body.event === 'published') return _handlePublished(body);
+    if (body.event === 'access_notice') return _handleAccessNotice(body);
     return _json({ ok: false, error: 'unknown event' });
   } catch (err) {
     return _json({ ok: false, error: String(err) });
@@ -73,6 +77,24 @@ function _handlePublished(b) {
                         htmlBody: html, name: SENDER_NAME });
   }
   _postChat(_card('📣 Published', b, b.publishedAt, _who(b.publisherName, b.publisherEmail), 'Published by'));
+  return _json({ ok: true });
+}
+
+function _handleAccessNotice(b) {
+  var to = SUPERADMIN_NOTIFY.filter(_emailAllowed).join(',');
+  if (!to) return _json({ ok: false, error: 'no recipients' });
+  var guest = b.kind === 'guest_share';
+  var subject = guest
+    ? '[L&D Playbook] Guest share: ' + (b.memberEmail || '') + ' - ' + (b.access || '')
+    : '[L&D Playbook] Access changed: ' + (b.memberEmail || '') + ' by ' + (b.actorName || b.actorEmail || '');
+  var html =
+    '<div style="font-family:Arial,Helvetica,sans-serif;font-size:14px;color:#24264A">' +
+    '<p>' + (guest ? 'A document was shared with a Guest on the L&amp;D Playbook:' : 'An Admin changed member access on the L&amp;D Playbook:') + '</p>' +
+    _table([['By', _who(b.actorName, b.actorEmail)], ['Person', b.memberEmail], ['Role', b.memberRole],
+            ['Change', b.changes], [guest ? 'Document' : 'Access now', b.access]]) +
+    _button(b.link, guest ? 'Open the document' : 'Open Manage access', '#02499D') +
+    '<p style="color:#7A8199;font-size:12px">You get this because you are a Superadmin. Nothing to do unless the change looks wrong.</p></div>';
+  MailApp.sendEmail({ to: to, subject: subject, htmlBody: html, name: SENDER_NAME });
   return _json({ ok: true });
 }
 
