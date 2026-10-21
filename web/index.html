@@ -1400,7 +1400,7 @@ textarea{resize:vertical;min-height:60px;line-height:1.5}
 
 <script>
 var GAS_MODE = true;
-var APP_VERSION = '2026.10.21b';
+var APP_VERSION = '2026.10.21c';
 console.log('[L&D Playbook] v' + APP_VERSION);
 var CURRENT_USER = "";
 var DOC = { processes: [] };
@@ -3234,7 +3234,7 @@ function doSendForApproval() {
   persist('Sent for approval: ' + P.title, function (ok, r) {
     if (!ok) { P.review = pr; P.reviewComment = prc; updatePublishButton(); Modal.alert('Could not send', errText(r)); return; }
     dirty = false; clearAutosave(P.process_id); pushHistory(P, 'Sent for approval'); addNotif('pending', P); notifyServer('Submitted for approval', P); sendApprovalEmail();
-    Modal.alert('Sent for approval', 'Sent to <b>' + esc(displayName(P.reviewer)) + '</b> for approval. They get an email (CC lnd.edl@pizza4ps.com) and can Approve — Approve &amp; publish — or Request changes.');
+    Modal.alert('Sent for approval', 'Sent to <b>' + esc(displayName(P.reviewer)) + '</b> for approval. They get an email (CC you and lnd.edl@pizza4ps.com) and can Approve — Approve &amp; publish — or Request changes.');
     backFromEditor();
   });
 }

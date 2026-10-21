@@ -57,7 +57,11 @@ function _handleApproval(b) {
         'or Request changes right on the document.</p></div>';
     var msg = { to: to, subject: '[L&D Playbook] Approval needed: ' + (b.title || '(no title)'),
                 htmlBody: html, name: SENDER_NAME };
-    if (CC_APPROVAL && _emailAllowed(CC_APPROVAL)) msg.cc = CC_APPROVAL;
+    var cc = [CC_APPROVAL, b.senderEmail].filter(function (a, i, arr) {   // the submitter gets a copy too
+      a = String(a || '').toLowerCase();
+      return a && _emailAllowed(a) && a !== to.toLowerCase() && arr.map(function (x) { return String(x || '').toLowerCase(); }).indexOf(a) === i;
+    });
+    if (cc.length) msg.cc = cc.join(',');
     MailApp.sendEmail(msg);
   }
   _postChat(_card('⏳ Waiting for approval', b, b.submittedAt, _who(b.senderName, b.senderEmail), 'Submitted by'));
