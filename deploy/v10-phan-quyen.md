@@ -88,3 +88,18 @@ Sau khi test xong, nhớ xoá email test ở mục 5 trong Manage access.
 - **Admin bấm lưu bị báo "Could not save access"** → đúng thiết kế nếu Admin sửa người không do mình thêm.
   Nếu là người do chính Admin thêm mà vẫn lỗi → gửi Claude ảnh chụp thông báo.
 - **Muốn hoàn tác Bước 1:** gửi Claude, đừng tự chạy lệnh hoàn tác ở cuối file SQL.
+
+---
+
+# v11 · Superadmin ẩn pillar với Admin
+
+Admin mặc định xem mọi pillar. Nếu Superadmin đặt một pillar là **None** cho Admin trong Manage access,
+Admin đó không thấy pillar ấy nữa. Tài liệu được đặt **View** riêng (Override single documents) vẫn hiện,
+kể cả khi pillar là None.
+
+**Thứ tự làm:** chạy SQL trước, merge PR sau.
+1. Supabase ▸ SQL Editor ▸ New query ▸ dán toàn bộ `deploy/supabase_v11_admin_pillar_none.sql` ▸ **Run**.
+2. Merge PR v11 ▸ mọi người Ctrl+Shift+R (Console phải hiện `2026.10.21a`).
+
+**Lưu ý:** phuong.ntl và hoa.doan đang có `data: none`, `elearning: none` từ trước nên sẽ bị ẩn 2 pillar này ngay.
+Muốn mở lại: Manage access ▸ chọn người ▸ bấm **View** ở pillar tương ứng.

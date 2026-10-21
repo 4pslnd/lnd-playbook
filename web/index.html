@@ -1393,7 +1393,7 @@ textarea{resize:vertical;min-height:60px;line-height:1.5}
 
 <script>
 var GAS_MODE = true;
-var APP_VERSION = '2026.10.20a';
+var APP_VERSION = '2026.10.21a';
 console.log('[L&D Playbook] v' + APP_VERSION);
 var CURRENT_USER = "";
 var DOC = { processes: [] };
@@ -2653,11 +2653,11 @@ function accessLevelFor(u, item) {
   if (u.admin) return 'edit';
   if (item.pillar === 'guide') return 'view';   /* Guide pillar is readable by every member */
   var guest = roleOf(u) === 'Guest';
-  var lvl = guest ? 'none' : ((u.pillars && u.pillars[item.pillar]) || 'none');
+  /* Admin views a pillar unless a Superadmin explicitly set it to None */
+  var lvl = guest ? 'none' : ((u.pillars && u.pillars[item.pillar]) || (roleOf(u) === 'Admin' ? 'view' : 'none'));
   if (!guest && item.pillar === CAREER_KEY && u.items && u.items[careerBUKey(item)]) lvl = u.items[careerBUKey(item)];  /* per-BU override */
   if (u.items && u.items[item.process_id]) lvl = u.items[item.process_id];  /* single-item exception wins */
   if (guest && lvl === 'edit') lvl = 'view';    /* guests are always view-only */
-  if (roleOf(u) === 'Admin' && lvl === 'none') lvl = 'view';   /* Admin sees every pillar */
   return lvl;
 }
 function accessLevel(item) { return accessLevelFor(currentUser, item); }
@@ -5531,7 +5531,7 @@ function drawAdmin() {
     var opts = guestOnly ? [['', 'No'], ['view', 'View']]
       : withDefault ? [['', 'Default'], ['none', 'None'], ['view', 'View'], ['edit', 'Edit']]
                     : [['none', 'None'], ['view', 'View'], ['edit', 'Edit']];
-    cur = cur == null ? (withDefault || guestOnly ? '' : 'none') : cur;
+    cur = cur == null ? (withDefault || guestOnly ? '' : (mRole === 'Admin' ? 'view' : 'none')) : cur;
     return '<span class="acc-seg' + (can ? '' : ' acc-seg--ro') + '" data-acc="' + esc(attr) + '"' + (can ? '' : ' style="opacity:.55;pointer-events:none"') + '>' + opts.map(function (o) {
       var on = cur === o[0];
       return '<button type="button" data-v="' + o[0] + '" class="acc-seg__b' + (on ? ' is-on' + (o[0] === 'view' ? ' acc--view' : (o[0] === 'edit' ? ' acc--edit' : '')) : '') + '">' + o[1] + '</button>';
@@ -5562,7 +5562,7 @@ function drawAdmin() {
     });
   } else {
     detail += '<div class="adm-sub">Access per pillar <span>— “View” sees published, “Edit” can change &amp; publish. Expand to override single documents.</span></div>';
-    if (mRole === 'Admin') detail += '<p class="adm-hint">An <b>Admin</b> can always view every pillar. Set <b>Edit</b> where they may change documents and approve submissions.</p>';
+    if (mRole === 'Admin') detail += '<p class="adm-hint">An <b>Admin</b> views every pillar unless it is set to <b>None</b> here. Set <b>Edit</b> where they may change documents and approve submissions. A single document set to View still shows inside a None pillar.</p>';
     /* normal pillars: pillar-level segmented control + optional per-document overrides */
     PILLARS.filter(function (pl) { return pl.key !== 'guide' && pl.key !== CAREER_KEY; }).forEach(function (pl) {
       detail += '<div class="acc-row"><span class="acc-name">' + esc(pl.label) + '</span>' + accSeg('pillar:' + pl.key, m.pillars && m.pillars[pl.key]) + '</div>';
