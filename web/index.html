@@ -1058,6 +1058,13 @@ textarea{resize:vertical;min-height:60px;line-height:1.5}
 .adm-side{border:1px solid var(--hairline);border-radius:var(--radius-md);background:var(--paper-raised);padding:14px}
 .adm-side__head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
 .adm-members{display:flex;flex-direction:column;gap:4px}
+.adm-grp+.adm-grp{margin-top:6px}
+.adm-grp__head{display:flex;align-items:center;gap:8px;width:100%;padding:7px 8px;border:0;border-radius:var(--radius-sm);background:var(--lane-bg);cursor:pointer;font:inherit;font-size:11.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:inherit;text-align:left}
+.adm-grp__caret{width:10px;opacity:.6}
+.adm-grp__name{flex:1}
+.adm-grp__count{font-weight:600;opacity:.6}
+.adm-grp__body{display:flex;flex-direction:column;gap:4px;margin-top:4px}
+.adm-grp__body[hidden]{display:none}
 .adm-member{display:flex;align-items:center;gap:9px;text-align:left;padding:8px;border:1px solid transparent;border-radius:var(--radius-sm);background:none;cursor:pointer;width:100%}
 .adm-member:hover{background:var(--lane-bg)}
 .adm-member--on{background:var(--indigo-2-fill);border-color:var(--indigo-2)}
@@ -1393,7 +1400,7 @@ textarea{resize:vertical;min-height:60px;line-height:1.5}
 
 <script>
 var GAS_MODE = true;
-var APP_VERSION = '2026.10.21a';
+var APP_VERSION = '2026.10.21b';
 console.log('[L&D Playbook] v' + APP_VERSION);
 var CURRENT_USER = "";
 var DOC = { processes: [] };
@@ -5504,7 +5511,7 @@ document.addEventListener('keydown', function (e) {
 });
 
 /* ============================ admin: manage access ============================ */
-var adminSel = null, admExpanded = {}, admQuery = '';
+var adminSel = null, admExpanded = {}, admQuery = '', admGroupOpen = {};
 function drawAdmin() {
   if (!canManageAccess()) { goHome(); return; }
   var S = $('adminScreen');
@@ -5517,12 +5524,19 @@ function drawAdmin() {
   var left = '<div class="adm-side"><div class="adm-side__head"><h2 class="mk-h2" style="margin:0">Members</h2>' +
     '<button class="mk-btn mk-btn--primary" id="admAdd" style="padding:5px 10px;font-size:11.5px">+ Add</button></div>' +
     '<input class="adm-search" id="admSearch" placeholder="Search people…" value="' + esc(admQuery) + '">' +
-    '<div class="adm-members">' + MEMBERS.map(function (u) {
-      var r = roleOf(u);
-      return '<button class="adm-member' + (u.email === adminSel ? ' adm-member--on' : '') + '" data-mem="' + esc(u.email) + '" data-search="' + esc(((u.name || '') + ' ' + u.email + ' ' + r).toLowerCase()) + '">' +
-        '<span class="pic-avatar">' + esc(((u.name || u.email)[0] || '?').toUpperCase()) + '</span>' +
-        '<span class="adm-member__col"><b>' + esc(u.name || u.email) + '</b><em>' + esc(u.email) + '</em></span>' +
-        '<span class="adm-badge' + (r === 'Superadmin' || r === 'Admin' ? ' adm-badge--admin' : '') + '">' + esc(r) + '</span></button>';
+    '<div class="adm-members">' + ROLES.map(function (role) {
+      var list = MEMBERS.filter(function (u) { return roleOf(u) === role; })
+        .sort(function (a, b) { return (a.name || a.email).localeCompare(b.name || b.email); });
+      if (!list.length) return '';
+      if (admGroupOpen[role] == null) admGroupOpen[role] = roleOf(m) === role;   /* first visit: open the selected person's group */
+      var open = admGroupOpen[role];
+      return '<div class="adm-grp" data-grp-wrap="' + role + '"><button type="button" class="adm-grp__head" data-grp="' + role + '" aria-expanded="' + open + '">' +
+        '<span class="adm-grp__caret">' + (open ? '▾' : '▸') + '</span><span class="adm-grp__name">' + esc(role) + '</span><span class="adm-grp__count">' + list.length + '</span></button>' +
+        '<div class="adm-grp__body"' + (open ? '' : ' hidden') + '>' + list.map(function (u) {
+          return '<button class="adm-member' + (u.email === adminSel ? ' adm-member--on' : '') + '" data-mem="' + esc(u.email) + '" data-search="' + esc(((u.name || '') + ' ' + u.email + ' ' + role).toLowerCase()) + '">' +
+            '<span class="pic-avatar">' + esc(((u.name || u.email)[0] || '?').toUpperCase()) + '</span>' +
+            '<span class="adm-member__col"><b>' + esc(u.name || u.email) + '</b><em>' + esc(u.email) + '</em></span></button>';
+        }).join('') + '</div></div>';
     }).join('') + '</div></div>';
 
   /* Segmented control. withDefault adds a "Default" state (no override — follow
@@ -5592,6 +5606,8 @@ function drawAdmin() {
     '<div class="adm-grid">' + left + detail + '</div>';
 
   S.querySelectorAll('[data-mem]').forEach(function (b) { b.onclick = function () { adminSel = b.getAttribute('data-mem'); drawAdmin(); }; });
+  S.querySelectorAll('[data-grp]').forEach(function (h) { h.onclick = function () { var g = h.getAttribute('data-grp'); admGroupOpen[g] = !admGroupOpen[g]; drawAdmin(); }; });
+  if (admQuery) searchMembers();
   $('admAdd').onclick = function () { Modal.prompt('Add member', 'Email — a @pizza4ps.com teammate, or an external email to share specific documents with:', '', function (email) {
     if (!email) return; email = email.trim().toLowerCase();
     if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) { Modal.alert('Invalid email', 'Please enter a valid email address.'); return; }
@@ -5628,6 +5644,13 @@ function drawAdmin() {
   function searchMembers() {
     admQuery = $('admSearch').value; var q = admQuery.trim().toLowerCase();
     S.querySelectorAll('.adm-member').forEach(function (b) { b.style.display = (!q || (b.getAttribute('data-search') || '').indexOf(q) >= 0) ? '' : 'none'; });
+    /* while searching, open every group that has a match and hide the rest */
+    S.querySelectorAll('[data-grp-wrap]').forEach(function (w) {
+      var g = w.getAttribute('data-grp-wrap'), body = w.querySelector('.adm-grp__body');
+      var hits = [].some.call(w.querySelectorAll('.adm-member'), function (b) { return b.style.display !== 'none'; });
+      w.style.display = q && !hits ? 'none' : '';
+      body.hidden = q ? false : !admGroupOpen[g];
+    });
   }
 }
 
