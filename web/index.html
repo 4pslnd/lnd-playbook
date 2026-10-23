@@ -1400,7 +1400,7 @@ textarea{resize:vertical;min-height:60px;line-height:1.5}
 
 <script>
 var GAS_MODE = true;
-var APP_VERSION = '2026.10.21c';
+var APP_VERSION = '2026.10.23a';
 console.log('[L&D Playbook] v' + APP_VERSION);
 var CURRENT_USER = "";
 var DOC = { processes: [] };
@@ -1530,12 +1530,28 @@ var MARK_DATA_URI = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABDgAAAM7CAYAA
           }
         }
         if (onCycle) {
+          /* Only keep the swap if it really breaks the loop: when another path
+             (e.g. a second "No" into the same fix-up step) still closes it,
+             the graph would stay cyclic and every row below would be wrong. */
           delete back[key];
           back[ne.from + '>' + ne.to] = true;
-          return;
+          if (!fwdReaches(tgt, src)) return;
+          delete back[ne.from + '>' + ne.to];
+          back[key] = true;
         }
       }
     });
+
+    function fwdReaches(a, b) {
+      var seen = {}, q = [a]; seen[a] = true;
+      while (q.length) {
+        var c = q.shift(); if (c === b) return true;
+        outEdges(byId[c] || {}).forEach(function (e) {
+          if (byId[e.to] && !back[c + '>' + e.to] && !seen[e.to]) { seen[e.to] = true; q.push(e.to); }
+        });
+      }
+      return false;
+    }
 
     return back;
   }
