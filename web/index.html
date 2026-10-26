@@ -1400,7 +1400,7 @@ textarea{resize:vertical;min-height:60px;line-height:1.5}
 
 <script>
 var GAS_MODE = true;
-var APP_VERSION = '2026.10.23a';
+var APP_VERSION = '2026.10.23b';
 console.log('[L&D Playbook] v' + APP_VERSION);
 var CURRENT_USER = "";
 var DOC = { processes: [] };
@@ -1782,10 +1782,58 @@ var MARK_DATA_URI = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABDgAAAM7CAYAA
       top += (rowH[d] || NODE_H) + ROW_GAP;
     }
 
-    var used = {};
+    /* Column (slot) inside a lane, decided row by row from the top so the main
+       path reads as one straight spine: a decision's Yes child sits directly
+       under it, its No child moves one column right, and a step with a single
+       parent stays in that parent's column. Steps with no such hint fill the
+       leftover columns in their original order. */
+    var slotOf = (function () {
+      var parents = {}; steps.forEach(function (s) { parents[s.id] = []; });
+      steps.forEach(function (s) {
+        outEdges(s).forEach(function (e) {
+          if (byId[e.to] && !back[s.id + '>' + e.to]) parents[e.to].push({ from: s.id, label: e.label });
+        });
+      });
+      var groups = {}, keys = [];
+      steps.forEach(function (s, i) {
+        var k = s.lane + '\u0000' + row[s.id];
+        if (!groups[k]) { groups[k] = { lane: s.lane, row: row[s.id], list: [] }; keys.push(k); }
+        groups[k].list.push({ s: s, i: i });
+      });
+      keys.sort(function (a, b) { return groups[a].row - groups[b].row; });
+      var out = {};
+      function pref(s) {
+        var ps = parents[s.id].filter(function (p) { var ps_ = byId[p.from]; return ps_.lane === s.lane && out[p.from] != null && row[p.from] < row[s.id]; });
+        if (!ps.length) return null;
+        var isDec = function (p) { return byId[p.from].type === 'decision'; };
+        var yes = ps.filter(function (p) { return isDec(p) && p.label === 'Yes'; })[0];
+        if (yes) return { slot: out[yes.from], rank: 0 };
+        if (parents[s.id].length === 1) {
+          var no1 = isDec(ps[0]) && ps[0].label === 'No';
+          return { slot: out[ps[0].from] + (no1 ? 1 : 0), rank: no1 ? 2 : 1 };
+        }
+        var no = ps.filter(function (p) { return isDec(p) && p.label === 'No'; })[0];
+        return no ? { slot: out[no.from] + 1, rank: 2 } : null;
+      }
+      keys.forEach(function (k) {
+        var g = groups[k], ms = maxSlots[g.lane] || 1, taken = {};
+        var withP = [], rest = [];
+        g.list.forEach(function (o) { o.p = ms > 1 ? pref(o.s) : null; (o.p ? withP : rest).push(o); });
+        withP.sort(function (a, b) { return a.p.rank - b.p.rank || a.i - b.i; }).forEach(function (o) {
+          var want = Math.min(o.p.slot, ms - 1), sl = -1;
+          for (var d = 0; d < ms && sl < 0; d++) {
+            if (want + d < ms && !taken[want + d]) sl = want + d;
+            else if (want - d >= 0 && !taken[want - d]) sl = want - d;
+          }
+          out[o.s.id] = sl; taken[sl] = 1;
+        });
+        rest.forEach(function (o) { var sl = 0; while (taken[sl]) sl++; out[o.s.id] = sl; taken[sl] = 1; });
+      });
+      return out;
+    })();
     var nodes = steps.map(function (s) {
-      var d = row[s.id], k = s.lane + '@' + d;
-      var slot = used[k] = (used[k] == null ? 0 : used[k] + 1);
+      var d = row[s.id];
+      var slot = slotOf[s.id];
       var lane = laneLeft[s.lane];
       var size = nodeSize(s.type); var nh = stepH(s);
       var slots = maxSlots[s.lane] || 1;
@@ -1934,9 +1982,22 @@ var MARK_DATA_URI = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABDgAAAM7CAYAA
         if (group.length >= 2) {
           var busY = Math.max(y1 + 16, rowTop[group[0].b.depth] - ROW_GAP * 0.5);
           var decFork = a.type === 'decision' && group.some(function (f) { return f.e.label === 'Yes'; }) && group.some(function (f) { return f.e.label === 'No'; });
+          /* When one branch sits straight below the diamond (normally Yes), it
+             drops from the bottom vertex and every other branch leaves a side
+             vertex, so the two never share the bottom stem. */
+          var belowF = decFork ? group.filter(function (f) { return Math.abs(f.b.x + f.b.w / 2 - x1) <= 4; })[0] : null;
           group.forEach(function (f) {
             var x2 = f.b.x + f.b.w / 2, y2 = f.b.y, path;
-            if (decFork && f.e.label === 'Yes') {
+            if (belowF) {
+              if (f === belowF) {
+                path = 'M' + x1 + ',' + y1 + ' L' + x2 + ',' + y2;
+                conns.push({ from: s.id, to: f.e.to, path: path, label: f.e.label, labelPos: { x: x1 + 10, y: (y1 + y2) / 2 - 8 }, back: false });
+              } else {
+                var sX = (x2 >= x1) ? a.x + a.w : a.x, sY = a.y + a.h / 2;
+                path = 'M' + sX + ',' + sY + ' L' + x2 + ',' + sY + ' L' + x2 + ',' + y2;
+                conns.push({ from: s.id, to: f.e.to, path: path, label: f.e.label, labelPos: { x: (sX + x2) / 2, y: sY - 8 }, back: false });
+              }
+            } else if (decFork && f.e.label === 'Yes') {
               var sideX = (x2 >= x1) ? a.x + a.w : a.x;
               var sideY = a.y + a.h / 2;
               path = 'M' + sideX + ',' + sideY + ' L' + x2 + ',' + sideY + ' L' + x2 + ',' + y2;
