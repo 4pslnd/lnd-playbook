@@ -1404,7 +1404,7 @@ textarea{resize:vertical;min-height:60px;line-height:1.5}
 
 <script>
 var GAS_MODE = true;
-var APP_VERSION = '2026.10.27b';
+var APP_VERSION = '2026.10.28a';
 console.log('[L&D Playbook] v' + APP_VERSION);
 var CURRENT_USER = "";
 var DOC = { processes: [] };
@@ -3605,7 +3605,7 @@ var XLSX_COLS = ['step_id', 'pic', 'type', 'label', 'full_description', 'timelin
 /* Header-cell hints (shown as Excel comments on row 1, and on the Valid values sheet). */
 var XLSX_HINTS = {
   step_id: 'Unique short id (letters/numbers), e.g. step1 or collect. Links steps via next/yes/no. Leave blank to auto-make it from the label.',
-  pic: "Who does this step (a role or name). For several people, separate with ' & ' — e.g. TPM & Intern.",
+  pic: "Who does this step (a role or name). For several people, separate with ' & ' — e.g. TPM & L&D members.",
   type: 'One of: start, action, decision, end. Exactly one start and one end. See the "Valid values" sheet.',
   label: 'Step name shown in the box. Keep it under 45 characters.',
   full_description: 'Full description shown on the website. Required for action/decision steps.',
@@ -3673,7 +3673,7 @@ function saveWorkbook(aoa, filename, subsAoa) {
     ref.push(['Valid "phase" values (optional, type exactly):', '']); bold.push({ r: ref.length - 1, c: 0 });
     ['Before', 'During', 'After'].forEach(function (p) { ref.push(['', p]); bold.push({ r: ref.length - 1, c: 1 }); });
     ref.push([]);
-    ref.push(['Multiple PIC', 'separate with " & ", e.g. TPM & Intern']);
+    ref.push(['Multiple PIC', 'separate with " & ", e.g. TPM & L&D members']);
     ref.push(['Multiple files', 'separate with ";", each as Label|https://url']);
     ref.push([]);
     ref.push(['Sub-steps sheet', 'One row per sub-step of an action step. step_id = the step it belongs to; order = 1, 2, 3…; sub_step = short name; description = optional detail. step_label is only a reminder and is ignored on import.']);
@@ -3692,11 +3692,11 @@ function saveWorkbook(aoa, filename, subsAoa) {
 }
 function downloadCSVTemplate() {
   saveWorkbook([XLSX_COLS,
-    ['start', 'Intern', 'start', 'Start', '', '', '', 'collect', '', '', '', '', '', ''],
-    ['collect', 'Intern', 'action', 'Collect data', 'Describe what to do', '15-20 monthly', 'Before', 'review', '', '', '1', '1', 'Template|https://docs.google.com/', 'Optional note'],
+    ['start', 'L&D members', 'start', 'Start', '', '', '', 'collect', '', '', '', '', '', ''],
+    ['collect', 'L&D members', 'action', 'Collect data', 'Describe what to do', '15-20 monthly', 'Before', 'review', '', '', '1', '1', 'Template|https://docs.google.com/', 'Optional note'],
     ['review', 'TPM', 'decision', 'Review content', 'Check quality before publishing', '', 'During', '', 'publish', 'collect', '1', '1', '', ''],
-    ['publish', 'Intern & TPM', 'action', 'Post announcement', 'Send email and post to the group', 'end of month', 'After', 'end', '', '', '1', '2', '', ''],
-    ['end', 'Intern', 'end', 'End', '', '', '', '', '', '', '', '', '', '']
+    ['publish', 'L&D members & TPM', 'action', 'Post announcement', 'Send email and post to the group', 'end of month', 'After', 'end', '', '', '1', '2', '', ''],
+    ['end', 'L&D members', 'end', 'End', '', '', '', '', '', '', '', '', '', '']
   ], 'Process template', [SUB_COLS,
     ['collect', 'Collect data', 1, 'Export the report', 'Download last month\'s report as Excel'],
     ['collect', 'Collect data', 2, 'Clean the data', 'Remove duplicates and blank rows']
@@ -3742,7 +3742,7 @@ function importCSV(pillarKey) {
         var type = (g(ci.type) || 'action').toLowerCase(), id = slug(g(ci.id) || g(ci.label) || 'step'), raw = id;
         if (seen[id]) { var k = 2; while (seen[id + '_' + k]) k++; id = id + '_' + k; } seen[id] = 1;
         if (!idOf[raw]) idOf[raw] = id;
-        var st = { id: id, lane: g(ci.pic) || g(ci.lane) || 'Intern', type: type, label: g(ci.label), task: g(ci.task), timeline: g(ci.timeline), phase: g(ci.phase) || '', note: g(ci.note), files: parseFilesCell(g(ci.files)), images: [],
+        var st = { id: id, lane: g(ci.pic) || g(ci.lane) || 'L&D members', type: type, label: g(ci.label), task: g(ci.task), timeline: g(ci.timeline), phase: g(ci.phase) || '', note: g(ci.note), files: parseFilesCell(g(ci.files)), images: [],
           workingDays: g(ci.days) === '' ? null : parseFloat(g(ci.days)), persons: g(ci.persons) === '' ? null : parseInt(g(ci.persons), 10) };
         if (type === 'decision') st.next = {
           yes: g(ci.yes).split(',').map(function (x) { return slug(x.trim()); }).filter(Boolean),
@@ -3769,7 +3769,7 @@ function importCSV(pillarKey) {
       DOC.processes.forEach(function (p) { taken2[p.process_id] = 1; }); while (taken2[id]) id = base + '_' + (k++);
       DOC.processes.push({ process_id: id, title: title, subtitle: '', status: 'draft', pillar: pillarKey, kind: 'process',
         pic: currentUser.email, updatedAt: todayISO(), createdBy: currentUser.email, lanes: owners.slice(),
-        owners: ['TPM', 'Intern', 'EDL', 'L&D Head', 'Stakeholders'], steps: steps });
+        owners: ['TPM', 'L&D members', 'EDL', 'L&D Head', 'Stakeholders'], steps: steps });
       Modal.alert('Imported — please review', 'Created “' + title + '” as a draft in ' + PILLAR_LABEL[pillarKey] + '. Check the steps before publishing.');
       openEditor(id);
     };
@@ -4243,11 +4243,11 @@ function uniqueId(title) {
 function blankSeed(kind) {
   if (kind === 'alignment') return { body: '<h2>Overview</h2><p>Write the alignment / guideline here.</p>' };
   return {
-    lanes: ['TPM', 'Intern', 'EDL', 'L&D Head', 'Stakeholders'],
-    owners: ['TPM', 'Intern', 'EDL', 'L&D Head', 'Stakeholders'],
+    lanes: ['TPM', 'L&D members', 'EDL', 'L&D Head', 'Stakeholders'],
+    owners: ['TPM', 'L&D members', 'EDL', 'L&D Head', 'Stakeholders'],
     steps: [
-      { id: 'start', label: 'Start', lane: 'Intern', type: 'start', next: ['end'], task: '', timeline: '', files: [], images: [], note: '' },
-      { id: 'end', label: 'End', lane: 'Intern', type: 'end', next: [], task: '', timeline: '', files: [], images: [], note: '' } ]
+      { id: 'start', label: 'Start', lane: 'L&D members', type: 'start', next: ['end'], task: '', timeline: '', files: [], images: [], note: '' },
+      { id: 'end', label: 'End', lane: 'L&D members', type: 'end', next: [], task: '', timeline: '', files: [], images: [], note: '' } ]
   };
 }
 /* Copy just the flow / written content of a source doc — never its identity,
@@ -4612,8 +4612,8 @@ function drawProcess(p) {
   var refFlow = (viewMode === 'diagram') ? flowOf(p, viewVariant) : p;
   var c = counts(refFlow), t = processTotals(refFlow);
   /* The "working days" estimate is L&D's own effort, so the note only applies to
-     processes L&D actually run (a step whose PIC is EDL / TPM / Intern). */
-  var ldRun = (refFlow.steps || []).some(function (s) { return /(^|[^A-Za-z])(EDL|TPM|Intern)([^A-Za-z]|$)/i.test(s.lane || ''); });
+     processes L&D actually run (a step whose PIC is EDL / TPM / L&D members). */
+  var ldRun = (refFlow.steps || []).some(function (s) { return /(^|[^A-Za-z])(EDL|TPM|Intern|L&D members)([^A-Za-z]|$)/i.test(s.lane || ''); });
   var u = unitOf(p);
   var metaChips = '<div class="proc-meta"><span class="proc-meta__chip">' + plural(c.steps, 'step') + '</span>' +
     '<span class="proc-meta__chip">' + plural(c.gates, 'review gate') + '</span>' +
@@ -5562,7 +5562,7 @@ function wireEditorChrome() {
     if (!P || kindOf(P) !== 'process') return;
     var t = b.getAttribute('data-add'), base = 'new_step', id = base, i = 2, taken = {};
     EF.steps.forEach(function (s) { taken[s.id] = 1; }); while (taken[id]) id = base + '_' + (i++);
-    EF.steps.push({ id: id, label: t === 'decision' ? 'Review' : 'New step', lane: EF.owners[0] || EF.lanes[0] || 'Intern', type: t, next: t === 'decision' ? { yes: [], no: [] } : [], task: '', timeline: '', files: [], images: [], note: '' });
+    EF.steps.push({ id: id, label: t === 'decision' ? 'Review' : 'New step', lane: EF.owners[0] || EF.lanes[0] || 'L&D members', type: t, next: t === 'decision' ? { yes: [], no: [] } : [], task: '', timeline: '', files: [], images: [], note: '' });
     sel = id; rebuildLanes(); markDirty(); draw(); }; });
   $('addParallel').onclick = function () {
     if (!P || kindOf(P) !== 'process' || !sel) { Modal.alert('Select a step', 'Select an action step first, then click + Parallel to add a step that runs alongside it.'); return; }
@@ -5580,7 +5580,7 @@ function wireEditorChrome() {
     if (!preds.length) { Modal.alert('Cannot parallel', 'This step has no predecessor — add it to the flow first.'); return; }
     var base = 'par_step', id = base, i = 2, taken = {};
     EF.steps.forEach(function (s) { taken[s.id] = 1; }); while (taken[id]) id = base + '_' + (i++);
-    var ns = { id: id, label: 'Parallel step', lane: EF.owners[1] || EF.owners[0] || EF.lanes[1] || EF.lanes[0] || 'Intern', type: 'action', next: succs.slice(), task: '', timeline: '', files: [], images: [], note: '' };
+    var ns = { id: id, label: 'Parallel step', lane: EF.owners[1] || EF.owners[0] || EF.lanes[1] || EF.lanes[0] || 'L&D members', type: 'action', next: succs.slice(), task: '', timeline: '', files: [], images: [], note: '' };
     EF.steps.push(ns);
     preds.forEach(function (p) {
       var s = p.step, nx = s.next;
@@ -5604,8 +5604,8 @@ function wireEditorChrome() {
     Modal.confirm('Switch type?', 'Switching between Flowchart and Document changes how this item is edited and shown. Continue?', function () {
       P.kind = k;
       if (k === 'alignment' && P.body == null) P.body = '## Overview\n\nWrite the alignment / guideline here.';
-      if (k === 'process' && !EF.steps) { EF.lanes = ['TPM','Intern','EDL','L&D Head','Stakeholders']; EF.owners = EF.lanes.slice();
-        EF.steps = [{ id:'start',label:'Start',lane:'Intern',type:'start',next:['end'],task:'',timeline:'',files:[],images:[],note:'' },{ id:'end',label:'End',lane:'Intern',type:'end',next:[],task:'',timeline:'',files:[],images:[],note:'' }]; sel='start'; }
+      if (k === 'process' && !EF.steps) { EF.lanes = ['TPM','L&D members','EDL','L&D Head','Stakeholders']; EF.owners = EF.lanes.slice();
+        EF.steps = [{ id:'start',label:'Start',lane:'L&D members',type:'start',next:['end'],task:'',timeline:'',files:[],images:[],note:'' },{ id:'end',label:'End',lane:'L&D members',type:'end',next:[],task:'',timeline:'',files:[],images:[],note:'' }]; sel='start'; }
       markDirty(); drawEditor();
     }, { okLabel: 'Switch' }); };
   $('ppic').onchange = function () { if (P) { P.pic = $('ppic').value || ''; markDirty(); } };

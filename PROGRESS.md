@@ -1,6 +1,6 @@
 # L&D Playbook — Tiến độ & Những điểm đã chốt
 
-_Cập nhật: 2026-09-25 · Nhánh phát triển: `handbook/supabase-web` → merge vào `main`_
+_Cập nhật: 2026-10-27 · Nhánh phát triển: `handbook/supabase-web` → merge vào `main`_
 
 Tài liệu này ghi lại các quyết định đã chốt và trạng thái triển khai của L&D Playbook
 (ứng dụng nội bộ: sơ đồ quy trình dạng swimlane + tài liệu "alignment", có luồng
@@ -89,6 +89,27 @@ _Các PR đã squash-merge trong đợt này: #50 → #64._
 
 - **PDF export**: giữ "khoan làm".
 - **Step number in list & detail**: không đụng tới (theo yêu cầu).
+- **Nút chuyển ngôn ngữ VI–EN cho cả Playbook** _(chờ sếp duyệt phương án, 2026-10-27)_.
+  Yêu cầu từ chị Grace (binh.nguyen): đọc/duyệt quy trình bằng tiếng Việt.
+  - **Đã chốt:**
+    - Phạm vi: dịch **giao diện + nội dung**.
+    - Tài liệu chưa có bản dịch: **hiện bản gốc kèm nhãn báo**.
+    - Bản dịch **duyệt chung** với bản gốc trong cùng một lần Send for approval/publish.
+  - **Giao diện:** tôi viết sẵn bản tiếng Việt cho các nút và menu, không tốn phí.
+  - **Nội dung, 3 phương án:**
+    1. *(đề xuất chính)* **Excel + Claude team đang dùng.** Xuất Excel (đã có sheet Sub-steps,
+       PR #101) → Claude dịch → editor rà → nút **"Nhập bản dịch"** ghép vào đúng tài liệu.
+       Không phát sinh phí, chất lượng tốt nhất, chỉ dùng công cụ AI đã được duyệt.
+    2. *(dự phòng)* **Chrome Translator chạy trên máy.** Miễn phí, nội dung không rời máy,
+       nhưng chất lượng thấp hơn; cần thử xem có hỗ trợ tiếng Việt không.
+    3. **Google Sheets `=GOOGLETRANSLATE()`.** Miễn phí, thủ công, chất lượng như Google Dịch.
+    - *Không chọn:* gọi **Claude API** trực tiếp từ app. Phí thấp (~$0.2–0.3 mỗi quy trình
+      với Opus 5.5), nhưng cần tài khoản API riêng, một Supabase Edge Function giữ key, và
+      Technology & Innovation duyệt việc gửi nội dung T2 qua API.
+  - **Việc cần làm khi được duyệt (phương án 1), chia 2 PR:**
+    - PR 1: nút VI/EN và bản dịch giao diện.
+    - PR 2: lưu hai ngôn ngữ trong mỗi tài liệu, nút "Nhập bản dịch" theo `step_id`,
+      nhãn "Chưa có bản dịch".
 
 ---
 
