@@ -567,7 +567,11 @@ img{ max-width: 100%; display:block; }
 .mm-veil{position:absolute;inset:0;background:rgba(36,38,74,.42)}
 .mm-box{position:relative;max-width:420px;margin:14vh auto 0;background:var(--paper-raised);
   border-radius:var(--radius-lg);box-shadow:var(--shadow-md);padding:22px 24px;
-  font-family:var(--font-body)}
+  font-family:var(--font-body);
+  /* never taller than the screen: the body scrolls, title and buttons stay visible */
+  display:flex;flex-direction:column;max-height:calc(86vh - 24px)}
+.mm-title,.mm-actions{flex:none}
+.mm-body{flex:1 1 auto;min-height:0;overflow-y:auto}
 .mm-title{font-family:var(--font-display);font-weight:400;font-size:21px;color:var(--indigo-1);margin-bottom:10px}
 .mm-body{font-size:13.5px;color:var(--ink-soft);line-height:1.5}
 .mm-body p{margin:0 0 4px}
@@ -1404,7 +1408,7 @@ textarea{resize:vertical;min-height:60px;line-height:1.5}
 
 <script>
 var GAS_MODE = true;
-var APP_VERSION = '2026.10.28b';
+var APP_VERSION = '2026.10.28d';
 console.log('[L&D Playbook] v' + APP_VERSION);
 var CURRENT_USER = "";
 var DOC = { processes: [] };
