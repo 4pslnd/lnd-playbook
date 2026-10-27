@@ -1404,7 +1404,7 @@ textarea{resize:vertical;min-height:60px;line-height:1.5}
 
 <script>
 var GAS_MODE = true;
-var APP_VERSION = '2026.10.28b';
+var APP_VERSION = '2026.10.28c';
 console.log('[L&D Playbook] v' + APP_VERSION);
 var CURRENT_USER = "";
 var DOC = { processes: [] };
@@ -6198,11 +6198,18 @@ if (typeof GAS_MODE === 'undefined' || !GAS_MODE) bootApp();
       if(!SB){reject(new Error('Chưa kết nối'));return;}
       var safe=(file.name||'file').replace(/[^A-Za-z0-9._-]+/g,'_');
       var path='att/'+Date.now()+'_'+Math.random().toString(36).slice(2,7)+'_'+safe;
-      SB.storage.from('attachments').upload(path,file,{contentType:file.type||'application/octet-stream',upsert:false}).then(function(u){
+      var opts={contentType:file.type||'application/octet-stream',upsert:false};
+      /* Via the proxy first; if that fails (e.g. a large video over the proxy's
+         body limit) retry straight to Supabase. */
+      SB.storage.from('attachments').upload(path,file,opts).then(function(u){
+        if(!u.error||SBRT===SB)return u;
+        return SBRT.storage.from('attachments').upload(path,file,opts);
+      }).then(function(u){
         if(u.error){reject(u.error);return;}
         SB.storage.from('attachments').createSignedUrl(path,315360000).then(function(su){
           if(su.error){reject(su.error);return;}
-          resolve({url:su.data.signedUrl,name:(file.name||'file').replace(/\.[^.]+$/,''),type:file.type||'',path:path});
+          /* Store the canonical Supabase URL in the document, never the proxy's. */
+          resolve({url:String(su.data.signedUrl).replace(SB_URL,SB_DIRECT),name:(file.name||'file').replace(/\.[^.]+$/,''),type:file.type||'',path:path});
         });
       });
     });
@@ -6217,7 +6224,7 @@ if (typeof GAS_MODE === 'undefined' || !GAS_MODE) bootApp();
   function subscribeRealtime(){
     if(_rtDone)return; _rtDone=true;
     try{
-      SB.channel('documents-live').on('postgres_changes',{event:'*',schema:'public',table:'documents'},function(payload){
+      SBRT.channel('documents-live').on('postgres_changes',{event:'*',schema:'public',table:'documents'},function(payload){
         var r=payload.new||payload.old; if(!r||!r.process_id)return; var pid=r.process_id;
         if(window.view&&window.view.level==='edit'&&window.P&&window.P.process_id===pid)return;   /* don't disturb an active edit */
         DOC.processes=DOC.processes||[];
@@ -6236,7 +6243,7 @@ if (typeof GAS_MODE === 'undefined' || !GAS_MODE) bootApp();
        optimistically, so skip those (matched by author) to avoid duplicates.
        Needs the `notifications` table in the supabase_realtime publication. */
     try{
-      SB.channel('notifications-live').on('postgres_changes',{event:'INSERT',schema:'public',table:'notifications'},function(payload){
+      SBRT.channel('notifications-live').on('postgres_changes',{event:'INSERT',schema:'public',table:'notifications'},function(payload){
         var r=payload.new; if(!r)return;
         if((r.by_email||'').toLowerCase()===MYEMAIL)return;
         var n={type:r.type,id:r.process_id,pillar:r.pillar,title:r.title,pic:r.pic||'',by:r.by_email,at:r.at};
@@ -6249,12 +6256,35 @@ if (typeof GAS_MODE === 'undefined' || !GAS_MODE) bootApp();
       }).subscribe();
     }catch(e){}
   }
-  SB=window.supabase.createClient("https://gwavhbebglgkeihyvsou.supabase.co","eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd3YXZoYmViZ2xna2VpaHl2c291Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg5MzEzMTcsImV4cCI6MjEwNDUwNzMxN30.0LsDw1aakQZ1XLcQ5oTS4KQNNmKFtDwPWtl8u4RGrfM",{auth:{persistSession:true,detectSessionInUrl:true,autoRefreshToken:true}});
+  /* Supabase is reached through a same-origin proxy on Vercel (vercel.json
+     rewrites /sb/* to the project), so networks that can't reach supabase.co
+     directly still work. On load we check the proxy answers; if it doesn't
+     (other host, rewrite missing) everything goes direct as before.
+     Realtime needs WebSockets, which the proxy can't carry, so it always uses a
+     separate direct client fed the signed-in user's token. */
+  var SB_DIRECT='https://gwavhbebglgkeihyvsou.supabase.co', SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd3YXZoYmViZ2xna2VpaHl2c291Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg5MzEzMTcsImV4cCI6MjEwNDUwNzMxN30.0LsDw1aakQZ1XLcQ5oTS4KQNNmKFtDwPWtl8u4RGrfM', SB_URL=SB_DIRECT, SBRT=null, _rtToken=null;
+  function makeClients(url){
+    SB_URL=url;
+    SB=window.supabase.createClient(url,SB_KEY,{auth:{persistSession:true,detectSessionInUrl:true,autoRefreshToken:true,
+      storageKey:'sb-gwavhbebglgkeihyvsou-auth-token'}});   /* keep existing sessions whatever the URL */
+    SBRT=(url===SB_DIRECT)?SB:window.supabase.createClient(SB_DIRECT,SB_KEY,{accessToken:function(){return Promise.resolve(_rtToken);}});
+    window.__SB_ROUTE=(url===SB_DIRECT)?'direct':'proxy';
+  }
+  function syncRtToken(session){ _rtToken=session?session.access_token:null; if(SBRT&&SBRT!==SB){try{SBRT.realtime.setAuth(_rtToken);}catch(e){}} }
+  function probeProxy(){
+    if(!/\.vercel\.app$/i.test(location.hostname))return Promise.resolve(false);
+    var ctl=window.AbortController?new AbortController():null, t=setTimeout(function(){if(ctl)ctl.abort();},6000);
+    return fetch(location.origin+'/sb/auth/v1/health?apikey='+encodeURIComponent(SB_KEY),{cache:'no-store',signal:ctl?ctl.signal:undefined})
+      .then(function(r){clearTimeout(t);if(!r.ok)return false;return r.json().then(function(j){return !!(j&&(j.version||j.name));},function(){return false;});})
+      .catch(function(){clearTimeout(t);return false;});
+  }
   function gate(id){['gateLogin','gateNoAccess'].forEach(function(g){$(g).hidden=g!==id;});}
   var booted=false;
   function start(){
     SB.auth.getUser().then(function(res){
       var u=res.data&&res.data.user;
+      if(res.error&&/fetch|network|timed?\s?out/i.test(String(res.error.message||res.error.name||''))){
+        gate('gateLogin');$('loginErr').textContent='Can\'t reach the server right now. Check your connection, then reload the page.';return;}
       if(res.error||!u){
         /* Remember the document the person was trying to open, so a magic-link
            login (which drops the URL hash on redirect) can return them to it. */
@@ -6277,8 +6307,7 @@ if (typeof GAS_MODE === 'undefined' || !GAS_MODE) bootApp();
       });
     });
   }
-  SB.auth.onAuthStateChange(function(evt){if(evt==='SIGNED_IN'&&!booted)start();});
-  $('emailBtn').onclick=function(){var em=($('loginEmail').value||'').trim().toLowerCase();if(!em){$('loginErr').textContent='Please enter your email.';return;}
+  $('emailBtn').onclick=function(){if(!SB)return;var em=($('loginEmail').value||'').trim().toLowerCase();if(!em){$('loginErr').textContent='Please enter your email.';return;}
     $('loginErr').textContent='';$('emailBtn').disabled=true;$('emailBtn').textContent='Checking…';
     SB.rpc('is_allowed_email',{p_email:em}).then(function(chk){
       if(chk.error){$('emailBtn').disabled=false;$('emailBtn').textContent='Send me a sign-in link';$('loginErr').textContent=chk.error.message;return;}
@@ -6290,6 +6319,21 @@ if (typeof GAS_MODE === 'undefined' || !GAS_MODE) bootApp();
         if(r.error){$('loginErr').textContent=r.error.message;return;}$('loginForm').hidden=true;$('loginSent').hidden=false;});
     });};
   $('naSignout').onclick=function(){SB.auth.signOut().then(function(){location.href=location.href.split('#')[0];});};
-  start();
+  probeProxy().then(function(ok){
+    makeClients(ok?location.origin+'/sb':SB_DIRECT);
+    console.log('[L&D Playbook] Supabase route: '+window.__SB_ROUTE);
+    SB.auth.onAuthStateChange(function(evt,session){syncRtToken(session);if(evt==='SIGNED_IN'&&!booted)start();});
+    /* Email links of the form ?token_hash=…&type=… sign in through the app (and
+       so through the proxy) instead of sending the browser to supabase.co. */
+    var qs=new URLSearchParams(location.search), th=qs.get('token_hash');
+    if(!th){start();return;}
+    var ty=qs.get('type')||'email'; if(ty==='magiclink'||ty==='signup')ty='email';
+    qs.delete('token_hash');qs.delete('type');
+    try{history.replaceState(null,'',location.pathname+(qs.toString()?'?'+qs.toString():'')+location.hash);}catch(e){}
+    SB.auth.verifyOtp({token_hash:th,type:ty}).then(function(r){
+      if(r.error){gate('gateLogin');$('loginErr').textContent='This sign-in link has expired or was already used. Please request a new one.';return;}
+      start();
+    });
+  });
 })();
 </script>
