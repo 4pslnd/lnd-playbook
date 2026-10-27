@@ -12,6 +12,11 @@
 - The bus routes through a shared trunk (`trunkSX`) with a gap before the target box, then enters horizontally from the side
 - Same-lane edges MUST be included in the fan-in bus (do NOT exclude with `a.lane !== b.lane`) — all converging arrows should enter the target from the same side via the shared bus for visual consistency
 - The trunkSX gap is calculated as `Math.max(COL_GAP, b.w * 0.35)` to ensure arrows don't run along the box edge
+- Exception: an `end` target is always entered from the top (no side entry)
+
+### Decision branches
+- A decision's Yes child sits directly under it; its No child goes one column right (slot assignment in `layout()`)
+- When both branches go down, the branch whose target is straight below leaves the bottom vertex; the other leaves the side vertex facing its target — the two never share the bottom stem
 
 ### Back-edge detection
 - `findBackEdges()` uses DFS with post-processing to prefer "No" decision edges as back-edge candidates

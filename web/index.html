@@ -586,6 +586,10 @@ img{ max-width: 100%; display:block; }
 .dg-wrap--vert{display:block;position:relative;border:1px solid var(--hairline);border-radius:var(--radius-lg);
   background:var(--paper-raised);overflow:hidden;box-shadow:var(--shadow-sm)}
 .dg-scroll--vert{overflow:auto;max-height:70vh}
+.dg-host:fullscreen{background:var(--paper-raised,#fff);padding:14px 18px;overflow:auto}
+.dg-host:fullscreen .dg-scroll--vert{max-height:calc(100vh - 80px)}
+.dg-fsbtn{border:1px solid var(--hairline-strong);background:var(--paper-raised);border-radius:999px;padding:4px 11px;font-family:var(--font-body);font-weight:700;font-size:11px;color:var(--ink-soft);cursor:pointer}
+.dg-fsbtn:hover{background:var(--lane-bg);color:var(--indigo-2)}
 .dg-rail--top{position:relative;z-index:7;height:44px;background:var(--lane-bg);
   border-bottom:1px solid var(--hairline);border-right:none;min-width:100%;flex:none}
 .dg-phaserail{position:absolute;left:1px;bottom:1px;overflow:hidden;background:var(--paper-raised);z-index:5;pointer-events:none}
@@ -1400,7 +1404,7 @@ textarea{resize:vertical;min-height:60px;line-height:1.5}
 
 <script>
 var GAS_MODE = true;
-var APP_VERSION = '2026.10.27a';
+var APP_VERSION = '2026.10.27b';
 console.log('[L&D Playbook] v' + APP_VERSION);
 var CURRENT_USER = "";
 var DOC = { processes: [] };
@@ -1954,6 +1958,11 @@ var MARK_DATA_URI = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABDgAAAM7CAYAA
       var x1 = a.x + a.w / 2, y1 = a.y + a.h;
       var hasYesFwd = false, hasNoFwd = false;
       if (a.type === 'decision') { fwd.forEach(function (f) { if (f.e.label === 'Yes') hasYesFwd = true; if (f.e.label === 'No') hasNoFwd = true; }); }
+      /* With both branches going down, the one whose target sits straight below
+         owns the bottom vertex; the other leaves the side vertex facing its
+         target. With neither below, No takes the side (Yes keeps the bottom). */
+      var decBelow = null;
+      if (hasYesFwd && hasNoFwd) fwd.forEach(function (f) { if (!decBelow && Math.abs(f.b.x + f.b.w / 2 - x1) <= 4) decBelow = f; });
       /* Same-row link (e.g. one parallel step feeding the next): a short
          horizontal arrow straight between the two boxes, arrowhead into target. */
       side.forEach(function (f) {
@@ -2010,7 +2019,7 @@ var MARK_DATA_URI = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABDgAAAM7CAYAA
         } else {
           var f = group[0], b = f.b, x2 = b.x + b.w / 2, y2 = b.y, path, lp;
           var fx1 = x1, fy1 = y1;
-          if (a.type === 'decision' && hasYesFwd && hasNoFwd && f.e.label === 'No') {
+          if (a.type === 'decision' && hasYesFwd && hasNoFwd && (decBelow ? f !== decBelow : f.e.label === 'No')) {
             fx1 = (x2 >= x1) ? a.x + a.w : a.x; fy1 = a.y + a.h / 2;
           }
           if (b.depth - a.depth >= 2) {
@@ -2144,7 +2153,9 @@ var MARK_DATA_URI = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABDgAAAM7CAYAA
       var skip = grp.map(function (g) { return g.sid; }).concat([grp[0].tid]);
       var depthDiff = b.depth - grp[0].a.depth;
       var avgSrcX = (minX + maxX) / 2;
-      var sideEntry = depthDiff <= 2 && Math.abs(x2 - avgSrcX) > NODE_W;
+      /* End is always entered from the top: a terminator reads as where the
+         flow falls into, not a box fed from the side. */
+      var sideEntry = depthDiff <= 2 && Math.abs(x2 - avgSrcX) > NODE_W && b.type !== 'end';
       if (sideEntry) {
         var fromLeft = avgSrcX < x2;
         var entryX = fromLeft ? b.x : b.x + b.w;
@@ -2481,7 +2492,23 @@ var MARK_DATA_URI = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABDgAAAM7CAYAA
     zc.innerHTML = '<button type="button" class="dg-zoomctl__btn" data-z="out" aria-label="Zoom out">−</button>' +
       '<span class="dg-zoomctl__pct" title="Click to fit">100%</span>' +
       '<button type="button" class="dg-zoomctl__btn" data-z="in" aria-label="Zoom in">+</button>';
-    tools.appendChild(zc); el.insertBefore(tools, wrap);
+    tools.appendChild(zc);
+    /* Full screen: the whole diagram host (toolbar + frame) fills the screen,
+       then re-fits; Esc or the same button leaves and re-fits again. */
+    if (el.requestFullscreen) {
+      el.classList.add('dg-host');
+      var fsb = document.createElement('button'); fsb.type = 'button'; fsb.className = 'dg-fsbtn';
+      var fsLabel = function () { fsb.textContent = document.fullscreenElement === el ? '✕ Exit full screen' : '⛶ Full screen'; };
+      fsLabel();
+      fsb.onclick = function () { if (document.fullscreenElement === el) document.exitFullscreen(); else el.requestFullscreen().catch(function () {}); };
+      var onFs = function () {
+        if (!wrap.isConnected) { document.removeEventListener('fullscreenchange', onFs); return; }   /* this render was replaced */
+        fsLabel(); setTimeout(function () { fitScale = computeFit(); apply(fitScale); }, 60);
+      };
+      document.addEventListener('fullscreenchange', onFs);
+      tools.appendChild(fsb);
+    }
+    el.insertBefore(tools, wrap);
     zoomPctEl = zc.querySelector('.dg-zoomctl__pct');
     zc.querySelector('[data-z="out"]').onclick = function () { apply(Math.max(0.15, curScale - 0.1)); };
     zc.querySelector('[data-z="in"]').onclick = function () { apply(Math.min(1.6, curScale + 0.1)); };
@@ -5842,6 +5869,12 @@ function wireBrand() {
 }
 var NOTIF_LABEL = { pending: '⏳ Waiting for approval', approved: '✓ Approved', published: '📣 Published', changes: '↩ Changes requested', deleted: '🗑 Deleted', restored: '↩ Restored' };
 var bellFilter = 'all', bellQuery = '', bellPic = '', bellFilterOpen = false;
+/* The notification row doesn't store the reviewer; the document does. */
+function notifApprover(n) {
+  if (n.type !== 'pending') return '';
+  var d = DOC.processes.filter(function (p) { return p.process_id === n.id; })[0];
+  return d && d.reviewer ? d.reviewer : '';
+}
 function renderBellPanel() {
   var P2 = $('bellPanel');
   var q = bellQuery.trim().toLowerCase();
@@ -5849,7 +5882,7 @@ function renderBellPanel() {
     if (bellFilter !== 'all' && n.type !== bellFilter) return false;
     if (bellPic && (n.pic || '') !== bellPic) return false;
     if (q && (n.title || '').toLowerCase().indexOf(q) < 0 && (n.by || '').toLowerCase().indexOf(q) < 0
-      && displayName(n.by).toLowerCase().indexOf(q) < 0) return false;
+      && displayName(n.by).toLowerCase().indexOf(q) < 0 && displayName(notifApprover(n)).toLowerCase().indexOf(q) < 0) return false;
     return true;
   });
   var active = (bellFilter !== 'all') || !!bellPic;
@@ -5872,7 +5905,8 @@ function renderBellPanel() {
         '<span class="hb-notif__row"><span class="hb-notif__t hb-notif__t--' + n.type + '">' + (NOTIF_LABEL[n.type] || n.type) + '</span>' +
         '<span class="hb-notif__date">' + fmtDate(n.at) + '</span></span>' +
         '<span class="hb-notif__title">' + esc(n.title) + '</span>' +
-        '<span class="hb-notif__meta">by ' + esc(displayName(n.by)) + (n.pic ? ' · PIC: ' + esc(displayName(n.pic)) : '') + '</span></button>'; }).join('') + '</div>'
+        '<span class="hb-notif__meta">by ' + esc(displayName(n.by)) + (n.pic ? ' · PIC: ' + esc(displayName(n.pic)) : '') +
+          (notifApprover(n) ? ' · <b>Approver: ' + esc(displayName(notifApprover(n))) + '</b>' : '') + '</span></button>'; }).join('') + '</div>'
       : '<div class="hb-bellpanel__empty">' + (NOTIFS.length ? 'Nothing matches this filter.' : 'No notifications yet. You’ll see here when a document is sent for approval, approved, published, deleted or restored.') + '</div>');
   var fb = $('notiFilterBtn'); if (fb) fb.onclick = function (e) { e.stopPropagation(); bellFilterOpen = !bellFilterOpen; renderBellPanel(); };
   var clr = $('notiClear'); if (clr) clr.onclick = function (e) { e.preventDefault(); e.stopPropagation(); markNotiSeen(); updateBell(); renderBellPanel(); };
