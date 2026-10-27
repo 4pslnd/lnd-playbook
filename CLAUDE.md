@@ -4,6 +4,7 @@
 - Single-page app in `web/index.html` (~5800+ lines), backed by Supabase
 - `AutoLayout.layout()` — flowchart layout engine (inside IIFE), produces nodes + connections
 - `DiagramRender.render()` — renders layout into DOM as SVG arrows + HTML boxes
+- Supabase is reached through a same-origin Vercel rewrite (`/sb/*` → project URL, `vercel.json` in repo root and `web/`). On load the app probes `/sb/auth/v1/health`; if it fails, it falls back to the direct URL. Realtime always uses a separate direct client (`SBRT`) because the proxy can't carry WebSockets. The auth `storageKey` is pinned to `sb-gwavhbebglgkeihyvsou-auth-token` so sessions survive the URL change. Uploaded file URLs are stored with the direct base. See `deploy/v12-proxy-qua-vercel.md`.
 
 ## Flowchart Arrow Routing Rules
 
