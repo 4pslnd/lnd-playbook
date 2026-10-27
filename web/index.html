@@ -1404,7 +1404,7 @@ textarea{resize:vertical;min-height:60px;line-height:1.5}
 
 <script>
 var GAS_MODE = true;
-var APP_VERSION = '2026.10.28a';
+var APP_VERSION = '2026.10.28b';
 console.log('[L&D Playbook] v' + APP_VERSION);
 var CURRENT_USER = "";
 var DOC = { processes: [] };
@@ -5652,6 +5652,65 @@ document.addEventListener('keydown', function (e) {
   }
 });
 
+/* ---------------------- Superadmin: rename a PIC everywhere ----------------------
+   Renames a PIC name (whole word, any case) in the lanes, owners and step PICs of
+   every document and BU variant — in the working draft AND, separately, in the
+   published copy, so a live document picks up only the rename and a pending
+   unreviewed draft is never published by this. Prose (descriptions) is untouched. */
+function picRenamer(from, to) {
+  var esc_ = from.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  var re = new RegExp('(^|[^A-Za-z])' + esc_ + '(?![A-Za-z])', 'gi'), rep = '$1' + to.replace(/\$/g, '$$$$');
+  return function renameIn(c) {
+    var n = 0; if (!c) return 0;
+    var f = function (v) { var nv = String(v == null ? '' : v).replace(re, rep); if (nv !== v) n++; return nv; };
+    var uniq = function (arr) { return arr.filter(function (x, i) { return arr.indexOf(x) === i; }); };
+    ['lanes', 'owners'].forEach(function (k) { if (Array.isArray(c[k])) c[k] = uniq(c[k].map(f)); });
+    (c.steps || []).forEach(function (st) { if (st && st.lane) st.lane = f(st.lane); });
+    (c.variants || []).forEach(function (v) { n += renameIn(v); });
+    return n;
+  };
+}
+function openPicRename() {
+  if (!isSuperadmin()) return;
+  var PUB = window._PUBLISHED || {};
+  function plan(from, to) {
+    if (!from.trim() || !to.trim() || from.trim() === to.trim()) return [];
+    var rn = picRenamer(from.trim(), to.trim());
+    return DOC.processes.filter(function (d) { return !d.deleted && kindOf(d) === 'process'; }).map(function (d) {
+      var draftN = rn(JSON.parse(JSON.stringify(d))), pubN = PUB[d.process_id] ? rn(JSON.parse(JSON.stringify(PUB[d.process_id]))) : 0;
+      return { d: d, draftN: draftN, pubN: pubN };
+    }).filter(function (x) { return x.draftN || x.pubN; });
+  }
+  var body = '<p style="margin:0 0 10px;font-size:13px;color:#666">Renames a PIC in the PIC columns and step PICs of <b>every flowchart</b> (whole word, e.g. “Intern” in “TPM & Intern”). Descriptions and notes are not changed — edit those by hand. A live document’s published version gets only this rename; any unpublished draft stays unpublished.</p>' +
+    '<label class="mm-flabel">Rename</label><input class="mm-input" id="prFrom" value="Intern">' +
+    '<label class="mm-flabel">To</label><input class="mm-input" id="prTo" value="L&amp;D members">' +
+    '<div id="prPreview" style="margin-top:12px;max-height:40vh;overflow:auto;font-size:12.5px"></div>';
+  var h = Modal.custom('Rename a PIC in all documents', body, [
+    { label: 'Cancel', onClick: function () { Modal.close(); } },
+    { label: 'Rename', primary: true, onClick: function () {
+      var from = h.querySelector('#prFrom').value.trim(), to = h.querySelector('#prTo').value.trim(), items = plan(from, to);
+      if (!items.length) { Modal.alert('Nothing to rename', 'No flowchart uses “' + esc(from) + '” as a PIC.'); return; }
+      var rn = picRenamer(from, to);
+      items.forEach(function (x) { rn(x.d); if (PUB[x.d.process_id]) rn(PUB[x.d.process_id]); x.d.updatedAt = todayISO(); x.d.updatedBy = currentUser.email; });
+      Modal.close();
+      persist('Renamed PIC “' + from + '” → “' + to + '”', function (ok, r) {
+        if (!ok) { Modal.alert('Rename failed', errText(r) + '<br><br>Reload the page to see the saved state.'); return; }
+        Modal.alert('PIC renamed', 'Renamed “' + esc(from) + '” to “' + esc(to) + '” in ' + items.length + ' document' + (items.length === 1 ? '' : 's') + '. Each change is in that document’s History.');
+        render();
+      });
+    } }
+  ]);
+  function draw() {
+    var items = plan(h.querySelector('#prFrom').value, h.querySelector('#prTo').value);
+    h.querySelector('#prPreview').innerHTML = items.length
+      ? '<table class="mx-table" style="font-size:12px"><tr><th class="mx-step" style="min-width:0">Document</th><th>Status</th><th>Draft</th><th>Live</th></tr>' + items.map(function (x) {
+          return '<tr><td class="mx-step" style="min-width:0">' + esc(x.d.title) + '</td><td>' + esc(x.d.status) + '</td><td>' + x.draftN + '</td><td>' + (PUB[x.d.process_id] ? x.pubN : '—') + '</td></tr>'; }).join('') +
+        '</table><p style="color:#666;margin:8px 0 0">Numbers = how many PIC entries change in each copy.</p>'
+      : '<p style="color:#666">No flowchart uses this PIC.</p>';
+  }
+  h.querySelector('#prFrom').oninput = draw; h.querySelector('#prTo').oninput = draw; draw();
+}
+
 /* ============================ admin: manage access ============================ */
 var adminSel = null, admExpanded = {}, admQuery = '', admGroupOpen = {};
 function drawAdmin() {
@@ -5744,10 +5803,12 @@ function drawAdmin() {
   detail += '</div>';
 
   S.innerHTML = '<section class="toc-hero"><h1 class="hb-h1">Manage access</h1>' +
-    '<p class="hb-lede">Add teammates and set who can view or edit each SOP, Alignment & Policy.</p></section>' +
+    '<p class="hb-lede">Add teammates and set who can view or edit each SOP, Alignment & Policy.</p>' +
+    (isSuperadmin() ? '<button class="mk-btn" id="picRenameBtn" style="margin-top:6px">⇄ Rename a PIC in all documents…</button>' : '') + '</section>' +
     '<div class="adm-grid">' + left + detail + '</div>';
 
   S.querySelectorAll('[data-mem]').forEach(function (b) { b.onclick = function () { adminSel = b.getAttribute('data-mem'); drawAdmin(); }; });
+  var prb = $('picRenameBtn'); if (prb) prb.onclick = openPicRename;
   S.querySelectorAll('[data-grp]').forEach(function (h) { h.onclick = function () { var g = h.getAttribute('data-grp'); admGroupOpen[g] = !admGroupOpen[g]; drawAdmin(); }; });
   if (admQuery) searchMembers();
   $('admAdd').onclick = function () { Modal.prompt('Add member', 'Email — a @pizza4ps.com teammate, or an external email to share specific documents with:', '', function (email) {
