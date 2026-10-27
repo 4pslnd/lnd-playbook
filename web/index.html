@@ -853,6 +853,17 @@ img{ max-width: 100%; display:block; }
 .hb-notif__t--published{background:var(--indigo-2-fill,#E8ECF7);color:var(--indigo-1)}
 .hb-notif__title{display:block;font-weight:700;font-size:13px;color:var(--ink);line-height:1.3}
 .hb-notif__meta{display:block;font-size:10.5px;color:var(--ink-faint);margin-top:2px}
+/* pending approval: the approver gets a big coloured avatar on the right */
+.hb-notif__rc{display:flex;align-items:center;gap:10px}
+.hb-notif__main{flex:1;min-width:0}
+.hb-notif__appr{flex:none;width:72px;display:flex;flex-direction:column;align-items:center;gap:3px}
+.hb-notif__alabel{font-size:8.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-faint)}
+.hb-notif__av{width:36px;height:36px;border-radius:50%;color:#fff;font-weight:700;font-size:12.5px;letter-spacing:.02em;display:flex;align-items:center;justify-content:center}
+.hb-notif__aname{font-size:10.5px;font-weight:700;color:var(--indigo-1);text-align:center;line-height:1.15;word-break:break-word}
+.hb-notif--me{background:#FFF7E8;box-shadow:inset 3px 0 0 #E0912F}
+.hb-notif--me:hover{background:#FDEFD6}
+.hb-notif--me .hb-notif__av{box-shadow:0 0 0 2px #fff,0 0 0 4px #E0912F}
+.hb-notif--me .hb-notif__aname{color:#B9731E}
 .noaccess{max-width:560px;margin:60px auto;text-align:center}
 .noaccess__icon{font-size:40px;margin-bottom:8px}
 .noaccess a{color:var(--indigo-2);text-decoration:underline}
@@ -1408,7 +1419,7 @@ textarea{resize:vertical;min-height:60px;line-height:1.5}
 
 <script>
 var GAS_MODE = true;
-var APP_VERSION = '2026.10.28d';
+var APP_VERSION = '2026.10.28e';
 console.log('[L&D Playbook] v' + APP_VERSION);
 var CURRENT_USER = "";
 var DOC = { processes: [] };
@@ -5934,6 +5945,30 @@ function wireBrand() {
 }
 var NOTIF_LABEL = { pending: '⏳ Waiting for approval', approved: '✓ Approved', published: '📣 Published', changes: '↩ Changes requested', deleted: '🗑 Deleted', restored: '↩ Restored' };
 var bellFilter = 'all', bellQuery = '', bellPic = '', bellFilterOpen = false;
+/* A stable colour per person (same email → same colour everywhere) and
+   two-letter initials, so approvers are told apart at a glance. */
+var PERSON_COLORS = ['#2E7D6B', '#6B4FA0', '#C0392B', '#1B57A6', '#B9731E', '#2E6B37', '#8E3B6B', '#36616E', '#7A5C2E', '#5A4FA0'];
+/* Colours are handed out in a fixed order — Superadmins and Admins (the
+   people who approve) first, then everyone else, alphabetically — so the
+   approvers never share a colour while there are fewer of them than colours. */
+var _colorMap = null, _colorMapKey = '';
+function personColor(email) {
+  var e = String(email || '').toLowerCase();
+  var key = MEMBERS.map(function (m) { return (m.email || '') + roleOf(m); }).join('|');
+  if (key !== _colorMapKey) {
+    _colorMapKey = key; _colorMap = {};
+    MEMBERS.slice().sort(function (a, b) { return roleRank(b) - roleRank(a) || String(a.email).localeCompare(String(b.email)); })
+      .forEach(function (m, i) { _colorMap[String(m.email || '').toLowerCase()] = PERSON_COLORS[i % PERSON_COLORS.length]; });
+  }
+  if (_colorMap[e]) return _colorMap[e];
+  var h = 0; for (var i = 0; i < e.length; i++) h = (h * 31 + e.charCodeAt(i)) >>> 0;
+  return PERSON_COLORS[h % PERSON_COLORS.length];
+}
+function initialsOf(name) {
+  var w = String(name || '').trim().split(/\s+/).filter(Boolean);
+  if (!w.length) return '?';
+  return (w.length === 1 ? w[0].slice(0, 2) : w[0][0] + w[w.length - 1][0]).toUpperCase();
+}
 /* The notification row doesn't store the reviewer; the document does. */
 function notifApprover(n) {
   if (n.type !== 'pending') return '';
@@ -5965,13 +6000,22 @@ function renderBellPanel() {
     (bellFilterOpen ? '<div class="hb-nfilters">' + chips + '</div>' + notiPicInline(bellPic, notiPicCounts) : '') +
     '</div>' +
     (list.length ? '<div class="hb-notiflist">' + list.slice(0, 60).map(function (n) {
+      var ap = notifApprover(n), mine = ap && ap.toLowerCase() === (currentUser.email || '').toLowerCase();
+      if (ap) return '<button class="hb-notif' + (n._unread ? ' hb-notif--unread' : '') + (mine ? ' hb-notif--me' : '') + '" data-goto="' + esc(n.id) + '" data-pk="' + esc(n.pillar) + '">' +
+        (n._unread ? '<span class="hb-notif__dot"></span>' : '') +
+        '<span class="hb-notif__rc"><span class="hb-notif__main">' +
+          '<span class="hb-notif__t hb-notif__t--' + n.type + '">' + (NOTIF_LABEL[n.type] || n.type) + '</span>' +
+          '<span class="hb-notif__title">' + esc(n.title) + '</span>' +
+          '<span class="hb-notif__meta">' + fmtDate(n.at) + ' · by ' + esc(displayName(n.by)) + (n.pic && n.pic !== n.by ? ' · PIC: ' + esc(displayName(n.pic)) : '') + '</span></span>' +
+        '<span class="hb-notif__appr" title="Approver: ' + esc(displayName(ap)) + '"><span class="hb-notif__alabel">Approver</span>' +
+          '<span class="hb-notif__av" style="background:' + personColor(ap) + '">' + esc(initialsOf(displayName(ap))) + '</span>' +
+          '<span class="hb-notif__aname">' + (mine ? 'You' : esc(displayName(ap))) + '</span></span></span></button>';
       return '<button class="hb-notif' + (n._unread ? ' hb-notif--unread' : '') + '" data-goto="' + esc(n.id) + '" data-pk="' + esc(n.pillar) + '">' +
         (n._unread ? '<span class="hb-notif__dot"></span>' : '') +
         '<span class="hb-notif__row"><span class="hb-notif__t hb-notif__t--' + n.type + '">' + (NOTIF_LABEL[n.type] || n.type) + '</span>' +
         '<span class="hb-notif__date">' + fmtDate(n.at) + '</span></span>' +
         '<span class="hb-notif__title">' + esc(n.title) + '</span>' +
-        '<span class="hb-notif__meta">by ' + esc(displayName(n.by)) + (n.pic ? ' · PIC: ' + esc(displayName(n.pic)) : '') +
-          (notifApprover(n) ? ' · <b>Approver: ' + esc(displayName(notifApprover(n))) + '</b>' : '') + '</span></button>'; }).join('') + '</div>'
+        '<span class="hb-notif__meta">by ' + esc(displayName(n.by)) + (n.pic ? ' · PIC: ' + esc(displayName(n.pic)) : '') + '</span></button>'; }).join('') + '</div>'
       : '<div class="hb-bellpanel__empty">' + (NOTIFS.length ? 'Nothing matches this filter.' : 'No notifications yet. You’ll see here when a document is sent for approval, approved, published, deleted or restored.') + '</div>');
   var fb = $('notiFilterBtn'); if (fb) fb.onclick = function (e) { e.stopPropagation(); bellFilterOpen = !bellFilterOpen; renderBellPanel(); };
   var clr = $('notiClear'); if (clr) clr.onclick = function (e) { e.preventDefault(); e.stopPropagation(); markNotiSeen(); updateBell(); renderBellPanel(); };
